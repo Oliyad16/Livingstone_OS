@@ -146,6 +146,23 @@ export async function initSchema() {
     )
   `
 
+  // Single-row store for the connected LinkedIn account's OAuth tokens.
+  await sql`
+    CREATE TABLE IF NOT EXISTS linkedin_connection (
+      id            INT PRIMARY KEY DEFAULT 1,
+      access_token  TEXT,
+      refresh_token TEXT,
+      expiry        TIMESTAMPTZ,
+      member_urn    TEXT,
+      name          TEXT,
+      created_at    TIMESTAMPTZ DEFAULT now(),
+      CONSTRAINT linkedin_connection_singleton CHECK (id = 1)
+    )
+  `
+
+  // Track LinkedIn post id on posts so we don't double-publish.
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS linkedin_id TEXT`
+
   // Workspace separation columns. Run AFTER all CREATE TABLEs so this works on a
   // fresh database (the tables must exist before we alter them).
   await sql`ALTER TABLE leads      ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`

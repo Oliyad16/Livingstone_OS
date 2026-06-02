@@ -17,6 +17,8 @@ export default function Authority() {
   const [filter, setFilter] = useState<string>('draft')
   const [editing, setEditing] = useState<Record<string, string>>({})
   const [copiedId, setCopiedId] = useState('')
+  const [li, setLi] = useState<{ connected: boolean; name: string | null }>({ connected: false, name: null })
+  const [publishing, setPublishing] = useState('')
   const { workspace } = useWorkspace()
 
   async function load() {
@@ -26,7 +28,20 @@ export default function Authority() {
   useEffect(() => {
     load()
     fetch('/api/posts/suggestions').then(r => r.json()).then(j => setSuggestions(j.topics || []))
+    fetch('/api/linkedin/status').then(r => r.json()).then(setLi).catch(() => {})
   }, [workspace])
+
+  async function publish(id: string) {
+    setPublishing(id)
+    const res = await fetch('/api/posts/publish', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    const j = await res.json()
+    setPublishing('')
+    if (!res.ok) alert(`Publish failed: ${j.error}`)
+    else load()
+  }
 
   async function generate(t?: string) {
     const useTopic = (t ?? topic).trim()
@@ -69,9 +84,16 @@ export default function Authority() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold">Authority</h2>
-        <p className="text-gray-400 text-sm">Build GEO authority on LinkedIn. Draft in your voice, approve, post.</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Authority</h2>
+          <p className="text-gray-400 text-sm">Build GEO authority on LinkedIn. Draft in your voice, approve, post.</p>
+        </div>
+        {li.connected ? (
+          <span className="text-xs text-green-400 bg-green-950/40 border border-green-900 px-3 py-1.5 rounded-lg">LinkedIn connected{li.name ? ` · ${li.name}` : ''}</span>
+        ) : (
+          <a href="/api/linkedin/auth" className="text-xs bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg">Connect LinkedIn</a>
+        )}
       </div>
 
       {/* Generator */}
@@ -141,7 +163,13 @@ export default function Authority() {
                   {p.status === 'approved' && (
                     <>
                       <button onClick={() => update(p.id, { status: 'draft' })} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-sm">Back to draft</button>
-                      <button onClick={() => update(p.id, { status: 'posted' })} className="bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium ml-auto">Mark posted</button>
+                      {li.connected ? (
+                        <button onClick={() => publish(p.id)} disabled={publishing === p.id} className="bg-blue-800 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-sm font-medium ml-auto">
+                          {publishing === p.id ? 'Posting…' : 'Publish to LinkedIn'}
+                        </button>
+                      ) : (
+                        <button onClick={() => update(p.id, { status: 'posted' })} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-sm ml-auto">Mark posted</button>
+                      )}
                     </>
                   )}
                   {p.status === 'posted' && p.postedAt && (
