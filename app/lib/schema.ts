@@ -91,13 +91,6 @@ export async function initSchema() {
   // Optionally pin a GA4 property to a client record.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ga4_property_id TEXT`
 
-  // Workspace separation: every record belongs to 'private' (SMB/GEO) or
-  // 'government' (capture/RFP). Existing rows default to private.
-  await sql`ALTER TABLE leads      ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
-  await sql`ALTER TABLE clients    ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
-  await sql`ALTER TABLE financials ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
-  await sql`ALTER TABLE posts      ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
-
   // Authority content (LinkedIn/GEO posts). status + scheduled_for are present
   // now so later auto-posting needs no migration.
   await sql`
@@ -152,4 +145,11 @@ export async function initSchema() {
       created_at  TIMESTAMPTZ DEFAULT now()
     )
   `
+
+  // Workspace separation columns. Run AFTER all CREATE TABLEs so this works on a
+  // fresh database (the tables must exist before we alter them).
+  await sql`ALTER TABLE leads      ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
+  await sql`ALTER TABLE clients    ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
+  await sql`ALTER TABLE financials ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
+  await sql`ALTER TABLE posts      ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
 }
