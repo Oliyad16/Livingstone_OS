@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Livingstone Command Center
 
-## Getting Started
+A single command center for the Livingstone Solution business — leads, clients,
+financials, government capture, website analytics, and LinkedIn authority — built
+on Next.js, Postgres (Neon), and live integrations with Stripe, Google Analytics
+(GA4), Gmail/Sheets (via the `gws` CLI), and LinkedIn.
 
-First, run the development server:
+**Live:** https://livingstone-os.vercel.app
+**Repo:** https://github.com/Oliyad16/Livingstone_OS
+
+---
+
+## What it does
+
+The command center is organized into three **workspaces**, switched from the top bar:
+
+| Workspace | For | Sections |
+|---|---|---|
+| **Private** | SMB / GEO / web-dev clients | Overview, Leads, Follow-ups, Clients, Analytics, Authority, Financials |
+| **Government** | Federal/state capture (RFPs) | Overview, Opportunities, Clients, Analytics, Financials |
+| **Client** | Client management cockpit | All Clients, Analytics, Client Financials |
+
+Every record (leads, clients, financials, posts, opportunities) is tagged with a
+`workspace` and views are scoped to the active one.
+
+### Core features
+
+- **Leads / CRM** — pipeline stages, touchpoints, sources. Import from Google Sheets.
+- **Follow-ups** — auto-detects leads with no contact in 3+ days, drafts a follow-up
+  in your voice, and (via the local sender) emails it through Gmail + logs the touchpoint.
+- **Clients** — list → detail page per client, with that client's **live GA4 website
+  data** (organic / AI-referral / sessions / conversions) for testimonial proof.
+- **Analytics** — connect your Google account once, read GA4 across every property
+  you have access to. Save snapshots to build trends over time.
+- **Authority** — generate LinkedIn/GEO posts in your voice (Claude or template),
+  approve, and publish to LinkedIn. A daily cron drafts one automatically.
+- **Financials** — Stripe revenue syncs in automatically; manual expenses.
+- **Opportunities** (Government) — solicitation tracking: agency, NAICS, vehicle,
+  set-aside, due date, stage, win-rate KPIs.
+
+---
+
+## Quick start (local)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local      # fill in DATABASE_URL at minimum
+npm run dev                     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+On first run, initialize the database schema:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+curl -X POST http://localhost:3000/api/init
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See **[docs/SETUP.md](docs/SETUP.md)** for the full environment + integration setup.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Tech stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Next.js 16** (App Router, Turbopack) + React 19 + Tailwind 4
+- **Postgres** — Neon (serverless driver) in production, local Postgres in dev.
+  The DB layer (`app/lib/db.ts`) auto-detects which driver to use from the URL.
+- **Stripe** SDK — read-only revenue sync
+- **google-auth-library** — GA4 OAuth (web flow)
+- **`gws` CLI** — Gmail + Sheets (runs locally, not on Vercel)
+- **@anthropic-ai/sdk** — LinkedIn post drafting (optional)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Documentation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Doc | What's in it |
+|---|---|
+| [docs/SETUP.md](docs/SETUP.md) | Environment variables + step-by-step setup for every integration |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the system is built — data model, workspaces, DB layer, deploy |
+| [docs/API.md](docs/API.md) | Every API route, what it does, request/response shapes |
+| [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) | Stripe, GA4, Gmail/Sheets, LinkedIn — how each connects + troubleshooting |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Daily/weekly tasks: syncing, sending follow-ups, posting, deploys |
+| [docs/SECURITY.md](docs/SECURITY.md) | Secrets handling, key rotation, the current open security items |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Status
+
+✅ **Live & connected:** Stripe · Neon · Vercel · GA4 · Gmail/Sheets
+🟡 **Built, needs your account step:** LinkedIn (app approval), Anthropic (API key)
+📋 **Open items:** see [docs/SECURITY.md](docs/SECURITY.md) for outstanding key rotations.
