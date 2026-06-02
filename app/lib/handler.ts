@@ -26,5 +26,5 @@ export function safe<T>(fn: (req: NextRequest) => Promise<NextResponse<T>>, empt
 /** Read ?workspace= from a request, defaulting to 'private'. */
 export function workspaceOf(req: NextRequest): string {
   const w = req.nextUrl.searchParams.get('workspace')
-  return w === 'government' ? 'government' : 'private'
+  return w === 'government' || w === 'client' ? w : 'private'
 }

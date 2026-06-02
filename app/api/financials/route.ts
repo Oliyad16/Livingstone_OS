@@ -5,15 +5,18 @@ import { safe, workspaceOf } from '../../lib/handler'
 type Row = { id: string; amount: string; label: string; date: string; source: string }
 
 export const GET = safe(async (req) => {
-  // 'client' cockpit shows financials across both sides; else scope by workspace.
-  const all = req.nextUrl.searchParams.get('workspace') === 'client'
+  // Every workspace shows only its own financials. Stripe income is tagged
+  // 'private' (private-side clients pay through Stripe), so it appears under
+  // Private only — not duplicated into the Client or Government views.
   const ws = workspaceOf(req)
-  const revenueRows = (all
-    ? await sql`SELECT id, amount, label, date::text AS date, source FROM financials WHERE kind = 'revenue' ORDER BY date DESC`
-    : await sql`SELECT id, amount, label, date::text AS date, source FROM financials WHERE kind = 'revenue' AND workspace = ${ws} ORDER BY date DESC`) as Row[]
-  const expenseRows = (all
-    ? await sql`SELECT id, amount, label, date::text AS date, source FROM financials WHERE kind = 'expense' ORDER BY date DESC`
-    : await sql`SELECT id, amount, label, date::text AS date, source FROM financials WHERE kind = 'expense' AND workspace = ${ws} ORDER BY date DESC`) as Row[]
+  const revenueRows = (await sql`
+    SELECT id, amount, label, date::text AS date, source
+    FROM financials WHERE kind = 'revenue' AND workspace = ${ws} ORDER BY date DESC
+  `) as Row[]
+  const expenseRows = (await sql`
+    SELECT id, amount, label, date::text AS date, source
+    FROM financials WHERE kind = 'expense' AND workspace = ${ws} ORDER BY date DESC
+  `) as Row[]
 
   return NextResponse.json({
     revenue: revenueRows.map(r => ({ ...r, amount: Number(r.amount) })),
