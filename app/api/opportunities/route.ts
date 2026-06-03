@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '../../lib/db'
-import { safe, workspaceOf } from '../../lib/handler'
+import { safe, workspaceOf, normalizeWorkspace, coerceNums } from '../../lib/handler'
 
 const SELECT = `
   SELECT id, title, sol_no AS "solNo", agency, naics, vehicle, set_aside AS "setAside",
@@ -10,7 +10,7 @@ const SELECT = `
 `
 
 type Row = { value: string | number; [k: string]: unknown }
-const coerce = (rows: Row[]) => rows.map(r => ({ ...r, value: Number(r.value) }))
+const coerce = (rows: Row[]) => coerceNums(rows, ['value'])
 
 export const GET = safe(async (req) => {
   const ws = workspaceOf(req)
@@ -24,7 +24,9 @@ export const GET = safe(async (req) => {
 
 export async function POST(req: NextRequest) {
   const b = await req.json()
-  const ws = b.workspace === 'private' ? 'private' : 'government'
+  // Opportunities are a government-capture artifact, so they default to the
+  // 'government' workspace when none is supplied (govDefault=true).
+  const ws = normalizeWorkspace(b.workspace, true)
   const id = Date.now().toString()
   await sql`
     INSERT INTO opportunities (id, title, sol_no, agency, naics, vehicle, set_aside, value, due_date, stage, source, url, notes, extra, workspace)

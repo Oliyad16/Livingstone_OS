@@ -54,7 +54,10 @@ export async function exchangeCode(code: string) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
   })
-  if (!res.ok) throw new Error(`LinkedIn token exchange: ${await res.text()}`)
+  if (!res.ok) {
+    console.error(`LinkedIn token exchange error (${res.status}):`, await res.text())
+    throw new Error('LinkedIn sign-in failed. Reconnect at /api/linkedin/auth.')
+  }
   const tok = (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string; id_token?: string }
 
   // Member URN comes from the userinfo endpoint (OpenID).
@@ -97,10 +100,14 @@ async function getAccessToken(): Promise<{ token: string; urn: string }> {
     })
     const res = await fetch(TOKEN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
     if (res.ok) {
-      const tok = (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string }
-      const expiry = new Date(Date.now() + tok.expires_in * 1000).toISOString()
-      await sql`UPDATE linkedin_connection SET access_token = ${tok.access_token}, expiry = ${expiry}, refresh_token = COALESCE(${tok.refresh_token ?? null}, refresh_token) WHERE id = 1`
-      return { token: tok.access_token, urn: conn.member_urn }
+      const tok = (await res.json()) as { access_token?: string; expires_in?: number; refresh_token?: string }
+      // Only persist a refresh that actually returned the fields we need — a
+      // partial response would otherwise store a null token or a NaN expiry.
+      if (tok.access_token && typeof tok.expires_in === 'number') {
+        const expiry = new Date(Date.now() + tok.expires_in * 1000).toISOString()
+        await sql`UPDATE linkedin_connection SET access_token = ${tok.access_token}, expiry = ${expiry}, refresh_token = COALESCE(${tok.refresh_token ?? null}, refresh_token) WHERE id = 1`
+        return { token: tok.access_token, urn: conn.member_urn }
+      }
     }
   }
   // Token expired and no usable refresh — surface a clear reconnect message.
@@ -129,7 +136,10 @@ export async function publishPost(text: string): Promise<string> {
       visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
     }),
   })
-  if (!res.ok) throw new Error(`LinkedIn publish failed: ${await res.text()}`)
+  if (!res.ok) {
+    console.error(`LinkedIn publish error (${res.status}):`, await res.text())
+    throw new Error('LinkedIn publish failed. The post was not shared.')
+  }
   const json = (await res.json()) as { id?: string }
   return json.id || 'posted'
 }

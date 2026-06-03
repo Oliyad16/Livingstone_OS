@@ -18,7 +18,10 @@ async function runReport(propertyId: string, body: unknown): Promise<RunReportRe
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`GA4 Data API: ${await res.text()}`)
+  if (!res.ok) {
+    console.error(`GA4 Data API error (${res.status}):`, await res.text())
+    throw new Error('Failed to load GA4 report data.')
+  }
   return res.json()
 }
 

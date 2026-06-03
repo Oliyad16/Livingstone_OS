@@ -25,8 +25,10 @@ export async function GET() {
 
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) {
-      const text = await res.text()
-      return NextResponse.json({ error: `GA4 Admin API: ${text}` }, { status: res.status })
+      // Log the provider's full response server-side; return a generic message
+      // so internal/rate-limit/OAuth details aren't disclosed to the client.
+      console.error(`GA4 Admin API error (${res.status}):`, await res.text())
+      return NextResponse.json({ error: 'Failed to load GA4 properties.' }, { status: res.status })
     }
     const data = (await res.json()) as { accountSummaries?: AccountSummary[]; nextPageToken?: string }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '../../../lib/db'
+import { guard } from '../../../lib/handler'
 
 const SELECT = `
   SELECT id, name, company, email, phone, source, status, service, notes,
@@ -9,7 +10,7 @@ const SELECT = `
   FROM leads
 `
 
-export async function POST(req: NextRequest) {
+export const POST = guard(async (req: NextRequest) => {
   const { leadId, type, notes } = await req.json()
   const date = new Date().toISOString()
   const touchpoint = { type, notes: notes || '', date }
@@ -25,4 +26,4 @@ export async function POST(req: NextRequest) {
 
   const rows = await sql.query(`${SELECT} WHERE id = $1`, [leadId])
   return NextResponse.json(rows[0])
-}
+})

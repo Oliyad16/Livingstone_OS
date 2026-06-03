@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchGa4Report } from '../../../lib/ga4'
 import { sql } from '../../../lib/db'
 
-// Days → date strings, computed server-side so client tz doesn't skew it.
+// Days → date strings. Anchor on UTC midnight so the arithmetic and the
+// .toISOString() formatting agree regardless of the server's local timezone
+// (mixing local-tz Date math with UTC ISO output caused an off-by-one day).
 function ranges(days: number) {
   const dayMs = 86_400_000
-  const today = new Date()
-  const end = new Date(today.getTime() - dayMs) // GA4 data lags ~1 day
-  const start = new Date(end.getTime() - (days - 1) * dayMs)
-  const priorEnd = new Date(start.getTime() - dayMs)
-  const priorStart = new Date(priorEnd.getTime() - (days - 1) * dayMs)
-  const iso = (d: Date) => d.toISOString().split('T')[0]
+  const now = new Date()
+  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const end = todayUTC - dayMs // GA4 data lags ~1 day
+  const start = end - (days - 1) * dayMs
+  const priorEnd = start - dayMs
+  const priorStart = priorEnd - (days - 1) * dayMs
+  const iso = (ms: number) => new Date(ms).toISOString().split('T')[0]
   return { start: iso(start), end: iso(end), priorStart: iso(priorStart), priorEnd: iso(priorEnd) }
 }
 

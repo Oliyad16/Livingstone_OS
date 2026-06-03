@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '../../lib/db'
-import { safe, workspaceOf } from '../../lib/handler'
+import { safe, workspaceOf, normalizeWorkspace, coerceNums } from '../../lib/handler'
 
 const SELECT = `
   SELECT id, name, company, email, phone, service, type, status, notes,
@@ -16,9 +16,7 @@ type ClientRow = { monthlyValue: string | number; projectValue: string | number;
 
 // NUMERIC columns come back as strings from node-postgres; coerce at the
 // boundary so the client always gets real numbers (prevents string-concat bugs).
-function coerce(rows: ClientRow[]) {
-  return rows.map(r => ({ ...r, monthlyValue: Number(r.monthlyValue), projectValue: Number(r.projectValue) }))
-}
+const coerce = (rows: ClientRow[]) => coerceNums(rows, ['monthlyValue', 'projectValue'])
 
 export const GET = safe(async (req) => {
   // 'client' workspace is the unified client cockpit: return clients from BOTH
@@ -36,7 +34,7 @@ export const GET = safe(async (req) => {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const ws = body.workspace === 'government' ? 'government' : 'private'
+  const ws = normalizeWorkspace(body.workspace)
   const id = Date.now().toString()
   const startDate = body.startDate || new Date().toISOString().split('T')[0]
   await sql`
@@ -47,8 +45,8 @@ export async function POST(req: NextRequest) {
             ${body.monthlyValue || 0}, ${body.projectValue || 0},
             'active', ${startDate}, ${body.notes || ''}, ${ws})
   `
-  const rows = await sql.query(`${SELECT} WHERE id = $1`, [id])
-  return NextResponse.json(rows[0], { status: 201 })
+  const rows = (await sql.query(`${SELECT} WHERE id = $1`, [id])) as ClientRow[]
+  return NextResponse.json(coerce(rows)[0], { status: 201 })
 }
 
 export async function PUT(req: NextRequest) {
@@ -72,8 +70,8 @@ export async function PUT(req: NextRequest) {
       ga4_property_id = ${body.ga4PropertyId !== undefined ? body.ga4PropertyId : cur.ga4PropertyId}
     WHERE id = ${body.id}
   `
-  const rows = await sql.query(`${SELECT} WHERE id = $1`, [body.id])
-  return NextResponse.json(rows[0])
+  const rows = (await sql.query(`${SELECT} WHERE id = $1`, [body.id])) as ClientRow[]
+  return NextResponse.json(coerce(rows)[0])
 }
 
 export async function DELETE(req: NextRequest) {

@@ -18,7 +18,10 @@ export async function readSheet(spreadsheetId: string, tab: string): Promise<str
   const res = await fetch(`${SHEETS_API}/${spreadsheetId}/values/${range}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) throw new Error(`Sheets API: ${await res.text()}`)
+  if (!res.ok) {
+    console.error(`Sheets API error (${res.status}):`, await res.text())
+    throw new Error('Could not read the Google Sheet. Check the ID and your access.')
+  }
   const data = (await res.json()) as { values?: string[][] }
   return data.values || []
 }
@@ -29,7 +32,10 @@ export async function listTabs(spreadsheetId: string): Promise<string[]> {
   const res = await fetch(`${SHEETS_API}/${spreadsheetId}?fields=sheets.properties.title`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) throw new Error(`Sheets API: ${await res.text()}`)
+  if (!res.ok) {
+    console.error(`Sheets API error (${res.status}):`, await res.text())
+    throw new Error('Could not list tabs for that Google Sheet. Check the ID and your access.')
+  }
   const data = (await res.json()) as { sheets?: { properties: { title: string } }[] }
   return (data.sheets || []).map(s => s.properties.title)
 }

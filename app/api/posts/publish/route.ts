@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '../../../lib/db'
 import { publishPost } from '../../../lib/linkedin'
+import { guard } from '../../../lib/handler'
 
 // Publish a stored post to LinkedIn, then mark it posted.
-export async function POST(req: NextRequest) {
+export const POST = guard(async (req: NextRequest) => {
   const { id } = await req.json()
   const rows = (await sql`SELECT id, body, status FROM posts WHERE id = ${id}`) as { id: string; body: string; status: string }[]
   if (rows.length === 0) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
@@ -16,4 +17,4 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: message }, { status: 400 })
   }
-}
+})

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { sql } from '../../../lib/db'
+import { guard, coerceNums } from '../../../lib/handler'
 
 const SELECT = `
   SELECT id, name, company, email, phone, service, type, status, notes,
@@ -13,10 +14,9 @@ const SELECT = `
 
 type Row = { monthlyValue: string | number; projectValue: string | number; [k: string]: unknown }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export const GET = guard(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params
   const rows = (await sql.query(`${SELECT} WHERE id = $1`, [id])) as Row[]
   if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const r = rows[0]
-  return NextResponse.json({ ...r, monthlyValue: Number(r.monthlyValue), projectValue: Number(r.projectValue) })
-}
+  return NextResponse.json(coerceNums(rows, ['monthlyValue', 'projectValue'])[0])
+})

@@ -66,11 +66,13 @@ export async function getAccessToken(): Promise<string> {
   const client = oauthClient()
   client.setCredentials({ refresh_token: conn.refresh_token })
   const { credentials } = await client.refreshAccessToken()
+  // Validate BEFORE persisting — a partial/failed refresh must not overwrite the
+  // stored connection with a null token (which would brick later requests).
+  if (!credentials.access_token) throw new Error('Failed to refresh Google access token.')
   await saveConnection({
     access_token: credentials.access_token,
     refresh_token: credentials.refresh_token,
     expiry_date: credentials.expiry_date,
   })
-  if (!credentials.access_token) throw new Error('Failed to refresh Google access token.')
   return credentials.access_token
 }

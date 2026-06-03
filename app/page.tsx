@@ -48,14 +48,19 @@ export default function Overview() {
 
   useEffect(() => {
     const w = `?workspace=${workspace}`
-    fetch(`/api/clients${w}`).then(r => r.json()).then(setClients)
-    fetch(`/api/financials${w}`).then(r => r.json()).then(setFinancials)
+    // Fetch JSON, falling back to a default on any network/parse error so a
+    // failed request can't leave an unhandled rejection or stale state.
+    const load = <T,>(url: string, fallback: T): Promise<T> =>
+      fetch(url).then(r => r.json()).catch(() => fallback)
+
+    load<Client[]>(`/api/clients${w}`, []).then(d => setClients(Array.isArray(d) ? d : []))
+    load<Financials>(`/api/financials${w}`, { revenue: [], expenses: [] }).then(setFinancials)
     if (isGov) {
-      fetch(`/api/opportunities${w}`).then(r => r.json()).then(d => setOpps(Array.isArray(d) ? d : []))
+      load<Opp[]>(`/api/opportunities${w}`, []).then(d => setOpps(Array.isArray(d) ? d : []))
     } else {
-      fetch(`/api/leads${w}`).then(r => r.json()).then(setLeads)
-      fetch(`/api/leads/followups${w}`).then(r => r.json()).then(j => setFollowups(j.count || 0))
-      fetch(`/api/posts${w}`).then(r => r.json()).then((p: { status: string }[]) =>
+      load<Lead[]>(`/api/leads${w}`, []).then(d => setLeads(Array.isArray(d) ? d : []))
+      load<{ count?: number }>(`/api/leads/followups${w}`, {}).then(j => setFollowups(j.count || 0))
+      load<{ status: string }[]>(`/api/posts${w}`, []).then(p =>
         setDraftPosts(Array.isArray(p) ? p.filter(x => x.status === 'draft').length : 0))
     }
   }, [workspace, isGov])

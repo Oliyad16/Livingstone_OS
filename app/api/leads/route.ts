@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '../../lib/db'
-import { safe, workspaceOf } from '../../lib/handler'
+import { safe, workspaceOf, normalizeWorkspace } from '../../lib/handler'
 
 const SELECT = `
   SELECT id, name, company, email, phone, source, status, service, notes,
@@ -18,7 +18,7 @@ export const GET = safe(async (req) => {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const ws = body.workspace === 'government' ? 'government' : 'private'
+  const ws = normalizeWorkspace(body.workspace)
   const id = Date.now().toString()
   await sql`
     INSERT INTO leads (id, name, company, email, phone, source, status, service, notes, touchpoints, workspace)

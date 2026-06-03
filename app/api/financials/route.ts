@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '../../lib/db'
-import { safe, workspaceOf } from '../../lib/handler'
+import { safe, workspaceOf, normalizeWorkspace } from '../../lib/handler'
 
 type Row = { id: string; amount: string; label: string; date: string; source: string }
 
@@ -26,7 +26,7 @@ export const GET = safe(async (req) => {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const ws = body.workspace === 'government' ? 'government' : 'private'
+  const ws = normalizeWorkspace(body.workspace)
   const id = Date.now().toString()
   const kind = body.kind === 'expense' ? 'expense' : 'revenue'
   const date = body.date || new Date().toISOString().split('T')[0]

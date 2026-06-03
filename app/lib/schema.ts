@@ -18,11 +18,12 @@ export async function initSchema() {
     )
   `
 
-  // Dedupe key for Sheet/CSV imports: one lead per non-empty email.
-  await sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS leads_email_unique
-    ON leads (lower(email)) WHERE email <> ''
-  `
+  // Dedupe key for Sheet/CSV imports: one lead per non-empty email *per
+  // workspace*. Scoping by workspace lets the same contact exist as both a
+  // private lead and a government lead without a constraint collision, and keeps
+  // imports from one workspace from clobbering another's leads.
+  // NB: this index is created after the `workspace` column is added below; see
+  // the workspace migration block at the end of this function.
 
   await sql`
     CREATE TABLE IF NOT EXISTS clients (
@@ -169,4 +170,21 @@ export async function initSchema() {
   await sql`ALTER TABLE clients    ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
   await sql`ALTER TABLE financials ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
   await sql`ALTER TABLE posts      ADD COLUMN IF NOT EXISTS workspace TEXT DEFAULT 'private'`
+
+  // Lead dedupe index — created here (not at table-creation) because it depends
+  // on the workspace column above. Replace the old email-only index (which would
+  // wrongly collide the same email across workspaces) with a per-workspace one.
+  await sql`DROP INDEX IF EXISTS leads_email_unique`
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS leads_workspace_email_unique
+    ON leads (workspace, lower(email)) WHERE email <> ''
+  `
+
+  // Indexes for the workspace filter present on every list query. Without these,
+  // each GET full-scans the table as data grows.
+  await sql`CREATE INDEX IF NOT EXISTS leads_workspace_idx      ON leads (workspace)`
+  await sql`CREATE INDEX IF NOT EXISTS clients_workspace_idx    ON clients (workspace)`
+  await sql`CREATE INDEX IF NOT EXISTS financials_workspace_idx ON financials (workspace)`
+  await sql`CREATE INDEX IF NOT EXISTS posts_workspace_idx      ON posts (workspace)`
+  await sql`CREATE INDEX IF NOT EXISTS opportunities_workspace_idx ON opportunities (workspace)`
 }

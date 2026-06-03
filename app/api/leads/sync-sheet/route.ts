@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '../../../lib/db'
 import { readSheet, mapRows, type ColumnMapping } from '../../../lib/sheets'
+import { normalizeWorkspace } from '../../../lib/handler'
 
 /**
  * POST { spreadsheetId, tab, mapping }
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
   if (!spreadsheetId || !tab) {
     return NextResponse.json({ error: 'spreadsheetId and tab required' }, { status: 400 })
   }
-  const ws = workspace === 'government' ? 'government' : 'private'
+  const ws = normalizeWorkspace(workspace)
 
   let rows: string[][]
   try {
@@ -29,26 +30,45 @@ export async function POST(req: NextRequest) {
   let seq = 0
   const newId = () => `${Date.now()}-${seq++}`
 
+  // Resolve all existing emails (for this workspace) in ONE query instead of one
+  // per row — avoids an N+1 on large imports. Map keyed by lower(email) → id.
+  const emails = Array.from(
+    new Set(leads.filter(l => l.email).map(l => l.email.toLowerCase()))
+  )
+  const existingById = new Map<string, string>()
+  if (emails.length > 0) {
+    const found = (await sql.query(
+      `SELECT id, lower(email) AS email FROM leads WHERE workspace = $1 AND lower(email) = ANY($2)`,
+      [ws, emails]
+    )) as { id: string; email: string }[]
+    for (const row of found) existingById.set(row.email, row.id)
+  }
+
   for (const l of leads) {
     if (!l.name && !l.company) { skipped++; continue }
 
     if (l.email) {
-      // Does a lead with this email already exist?
-      const existing = (await sql`SELECT id FROM leads WHERE lower(email) = lower(${l.email}) LIMIT 1`) as { id: string }[]
-      if (existing.length > 0) {
+      // Existence resolved from the batch map above (workspace-scoped), so a
+      // same-email lead in another workspace is never clobbered.
+      const existingId = existingById.get(l.email.toLowerCase())
+      if (existingId) {
         await sql`
           UPDATE leads SET
             name = ${l.name}, company = ${l.company}, phone = ${l.phone},
             service = COALESCE(NULLIF(${l.service}, ''), service),
             notes   = COALESCE(NULLIF(${l.notes}, ''), notes)
-          WHERE id = ${existing[0].id}
+          WHERE id = ${existingId}
         `
         updated++
       } else {
+        const id = newId()
         await sql`
           INSERT INTO leads (id, name, company, email, phone, source, status, service, notes, touchpoints, workspace)
-          VALUES (${newId()}, ${l.name}, ${l.company}, ${l.email}, ${l.phone}, ${l.source}, ${l.status}, ${l.service}, ${l.notes}, '[]'::jsonb, ${ws})
+          VALUES (${id}, ${l.name}, ${l.company}, ${l.email}, ${l.phone}, ${l.source}, ${l.status}, ${l.service}, ${l.notes}, '[]'::jsonb, ${ws})
         `
+        // Record it so a duplicate email later in the SAME sheet updates this row
+        // instead of inserting again (and hitting the unique index).
+        existingById.set(l.email.toLowerCase(), id)
         inserted++
       }
     } else {
