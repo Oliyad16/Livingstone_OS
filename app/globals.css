@@ -1,26 +1,225 @@
 @import "tailwindcss";
 
+/*
+  Livingstone Command Center — "Light & Airy + Gold" design system.
+
+  The whole app was written against Tailwind's default gray/blue scale
+  (bg-gray-950, text-white, bg-blue-800, …). Rather than rewrite every
+  className, we REMAP those scale steps to a warm, light, gold-accented
+  palette here. One source of truth → the entire app re-skins coherently.
+
+  Brand colors come from the Living Stone Solutions crest:
+    • gold / bronze  → primary accent (buttons, active nav, links)
+    • royal "berry"  → secondary data accent (charts, pills)
+    • warm off-white → surfaces & background
+*/
+
+@theme {
+  /* ---- Fonts (wired to next/font variables set in layout.tsx) ---- */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: var(--font-fraunces), "Playfair Display", Georgia,
+    "Times New Roman", serif;
+
+  /* ---- Brand gold (remaps the old "blue" primary) ---- */
+  --color-blue-900: #6b4f1d; /* deep bronze (dark pills) */
+  --color-blue-800: #9a7723; /* primary gold (buttons, active nav) */
+  --color-blue-700: #b8902f; /* gold hover */
+  --color-blue-600: #b8902f;
+  --color-blue-300: #8a6a1f;
+
+  /* ---- Royal berry blue (the data accent: remaps sky/blue-data) ---- */
+  --color-sky-300: #3b5bdb;
+  --color-sky-400: #2f4bc4;
+
+  /* ---- Neutral "gray" scale, remapped warm + LIGHT ----
+     Old usage → new meaning:
+       gray-950  app background      → warm paper
+       gray-900  cards / panels      → white
+       gray-800  borders / 2nd surf  → soft warm border
+       gray-700  stronger border     → mid warm border
+       gray-600  faint text          → soft ink
+       gray-500  muted text          → mid ink
+       gray-400  secondary text      → readable mid ink
+       gray-300  brighter text       → strong ink
+       white     primary text        → near-black ink            */
+  --color-gray-950: #f7f4ee; /* app background (warm paper) */
+  --color-gray-900: #ffffff; /* cards / panels */
+  --color-gray-800: #e7e1d6; /* soft border / faint surface */
+  --color-gray-700: #d8cfbf; /* stronger border */
+  --color-gray-600: #a89f8d; /* faint ink */
+  --color-gray-500: #8b8475; /* muted ink */
+  --color-gray-400: #6b6457; /* secondary text */
+  --color-gray-300: #3f3a31; /* strong text */
+  --color-white: #ffffff; /* stays true white so bg-white works */
+  --color-black: #1c1a15;
+
+  /* ---- Status colors, tuned for a light surface ---- */
+  --color-green-300: #047857;
+  --color-green-400: #059669;
+  --color-green-600: #059669;
+  --color-green-700: #047857;
+  --color-green-900: #d1fae5; /* light "active" pill bg */
+  --color-green-950: #ecfdf5;
+
+  --color-amber-200: #92400e;
+  --color-amber-300: #b45309;
+  --color-amber-400: #b45309;
+  --color-amber-500: #d97706;
+  --color-amber-800: #fcd9a8;
+  --color-amber-950: #fdf5e9; /* light amber banner bg */
+
+  --color-red-200: #b91c1c;
+  --color-red-300: #dc2626;
+  --color-red-400: #dc2626;
+  --color-red-600: #dc2626;
+  --color-red-800: #f6c4c4;
+  --color-red-900: #fde4e4;
+  --color-red-950: #fdeeee; /* light red banner / delete bg */
+
+  /* ---- Design tokens ---- */
+  --color-gold: #9a7723;
+  --color-gold-soft: #c9a961;
+  --color-berry: #2f4bc4;
+
+  --radius-xl: 1rem;
+  --radius-lg: 0.75rem;
+
+  --shadow-card: 0 1px 2px rgba(40, 33, 16, 0.04),
+    0 8px 24px -12px rgba(40, 33, 16, 0.12);
+  --shadow-soft: 0 1px 2px rgba(40, 33, 16, 0.05);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f4ee;
+  --foreground: #2a2620;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  border-color: var(--color-gray-800);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1200px 600px at 100% -10%, #fbf3df 0%, transparent 55%),
+    radial-gradient(900px 500px at -10% 110%, #f1ece1 0%, transparent 50%),
+    var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings get an elegant serif for a premium, editorial feel. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+/* `text-white` was the app's "primary text" color on a dark theme. On the
+   light theme it must read as near-black ink. We override the utility here
+   (rather than the --color-white token) so `bg-white` stays true white. */
+.text-white {
+  color: #2a2620 !important;
+}
+/* …except where white text sits on a gold/colored surface (buttons, active
+   nav, colored pills) — those re-assert white via their own rules below. */
+
+/* Cards: any element using bg-gray-900 (a surface) gets a real soft shadow
+   so panels lift off the warm paper background instead of sitting flat. */
+.bg-gray-900 {
+  box-shadow: var(--shadow-card);
+}
+
+/* Inputs/selects/textareas: light fields with a gold focus ring. */
+input,
+select,
+textarea {
+  color: var(--color-white);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-gray-500);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-gold) !important;
+  box-shadow: 0 0 0 3px rgba(154, 119, 35, 0.15);
+  outline: none;
+}
+select option {
+  color: #2a2620;
+  background: #ffffff;
+}
+
+/* Primary (gold) buttons get a subtle gradient + lift. */
+.bg-blue-800,
+.bg-blue-700 {
+  background-image: linear-gradient(180deg, #b8902f 0%, #9a7723 100%);
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgba(106, 79, 29, 0.25),
+    0 6px 16px -8px rgba(154, 119, 35, 0.5);
+}
+.hover\:bg-blue-700:hover,
+.bg-blue-800:hover {
+  background-image: linear-gradient(180deg, #c79b33 0%, #a8842a 100%);
+}
+
+/* Pills/badges that used dark accent backgrounds → soft tinted chips */
+.bg-blue-900 {
+  background: #f4ead1 !important;
+}
+.text-sky-300 {
+  color: #8a6a1f !important;
+}
+
+/* Custom scrollbar in the warm theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ddd3c1;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c9bda6;
+  background-clip: content-box;
+}
+
+/* Reusable helpers for the upgraded shell / primitives */
+.glass-bar {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+}
+.text-gold {
+  color: var(--color-gold);
+}
+.bg-gold {
+  background: var(--color-gold);
+}
+.card-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(40, 33, 16, 0.06),
+    0 16px 36px -16px rgba(40, 33, 16, 0.22);
+}
+.gold-divider {
+  height: 3px;
+  width: 44px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c9a961, #9a7723);
 }

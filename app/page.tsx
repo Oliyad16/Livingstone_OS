@@ -36,6 +36,49 @@ function thisWeek(dateStr: string) {
   return d >= weekAgo && d <= now
 }
 
+// Small inline icon set for KPI cards.
+function StatIcon({ name }: { name: string }) {
+  const p = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  const icons: Record<string, React.ReactNode> = {
+    clients: <svg {...p}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 9h8M8 13h5" /></svg>,
+    money: <svg {...p}><path d="M12 2v20M17 6.5c0-2-2.2-3-5-3s-5 1-5 3 2.5 2.8 5 3.5 5 1.5 5 3.5-2.2 3-5 3-5-1-5-3" /></svg>,
+    leads: <svg {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3 20a6 6 0 0 1 12 0" /></svg>,
+    spark: <svg {...p}><path d="m13 2-9 12h7l-1 8 9-12h-7z" /></svg>,
+    touch: <svg {...p}><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" /></svg>,
+    check: <svg {...p}><path d="M20 6 9 17l-5-5" /></svg>,
+    up: <svg {...p}><path d="M3 17 9 11l4 4 8-8M21 7v6M21 7h-6" /></svg>,
+    down: <svg {...p}><path d="M3 7 9 13l4-4 8 8M21 17v-6M21 17h-6" /></svg>,
+    doc: <svg {...p}><path d="M14 3v5h5M7 3h7l5 5v13H7z" /><path d="M10 13h6M10 17h6" /></svg>,
+    target: <svg {...p}><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.2" /></svg>,
+    clock: <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
+  }
+  return <>{icons[name] ?? icons.spark}</>
+}
+
+type Tint = 'gold' | 'berry' | 'green' | 'red' | 'neutral'
+const TINTS: Record<Tint, { bg: string; fg: string }> = {
+  gold: { bg: 'rgba(154,119,35,0.10)', fg: '#9a7723' },
+  berry: { bg: 'rgba(47,75,196,0.10)', fg: '#2f4bc4' },
+  green: { bg: 'rgba(5,150,105,0.10)', fg: '#059669' },
+  red: { bg: 'rgba(220,38,38,0.10)', fg: '#dc2626' },
+  neutral: { bg: 'rgba(42,38,32,0.06)', fg: '#6b6457' },
+}
+
+function StatCard({ label, value, icon, tint = 'neutral' }: { label: string; value: string | number; icon: string; tint?: Tint }) {
+  const t = TINTS[tint]
+  return (
+    <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800 card-hover">
+      <div className="flex items-start justify-between mb-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: t.bg, color: t.fg }}>
+          <StatIcon name={icon} />
+        </span>
+      </div>
+      <p className="text-[2rem] leading-none font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-serif)' }}>{value}</p>
+      <p className="text-xs text-gray-500 mt-2 font-medium">{label}</p>
+    </div>
+  )
+}
+
 export default function Overview() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [clients, setClients] = useState<Client[]>([])
@@ -48,8 +91,6 @@ export default function Overview() {
 
   useEffect(() => {
     const w = `?workspace=${workspace}`
-    // Fetch JSON, falling back to a default on any network/parse error so a
-    // failed request can't leave an unhandled rejection or stale state.
     const load = <T,>(url: string, fallback: T): Promise<T> =>
       fetch(url).then(r => r.json()).catch(() => fallback)
 
@@ -86,27 +127,27 @@ export default function Overview() {
   const govPipeline: Record<string, number> = { identified: 0, qualified: 0, bid: 0, submitted: 0, won: 0, lost: 0 }
   opps.forEach(o => { if (govPipeline[o.stage] !== undefined) govPipeline[o.stage]++ })
 
-  const privateStats = [
-    { label: 'Active Clients', value: activeClients.length },
-    { label: 'MRR', value: `$${mrr.toLocaleString()}` },
-    { label: 'Total Leads', value: leads.length },
-    { label: 'New Leads This Week', value: newLeadsThisWeek },
-    { label: 'Touchpoints This Week', value: touchpointsThisWeek },
-    { label: 'Closed This Week', value: closedThisWeek },
-    { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}` },
-    { label: 'Total Expenses', value: `$${totalExpenses.toLocaleString()}` },
-    { label: 'Post Drafts', value: draftPosts },
+  const privateStats: { label: string; value: string | number; icon: string; tint: Tint }[] = [
+    { label: 'Active Clients', value: activeClients.length, icon: 'clients', tint: 'gold' },
+    { label: 'MRR', value: `$${mrr.toLocaleString()}`, icon: 'money', tint: 'green' },
+    { label: 'Total Leads', value: leads.length, icon: 'leads', tint: 'berry' },
+    { label: 'New Leads This Week', value: newLeadsThisWeek, icon: 'spark', tint: 'gold' },
+    { label: 'Touchpoints This Week', value: touchpointsThisWeek, icon: 'touch', tint: 'berry' },
+    { label: 'Closed This Week', value: closedThisWeek, icon: 'check', tint: 'green' },
+    { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: 'up', tint: 'green' },
+    { label: 'Total Expenses', value: `$${totalExpenses.toLocaleString()}`, icon: 'down', tint: 'red' },
+    { label: 'Post Drafts', value: draftPosts, icon: 'doc', tint: 'neutral' },
   ]
 
-  const govStats = [
-    { label: 'Open Pipeline', value: `$${govPipelineValue.toLocaleString()}` },
-    { label: 'Open Opportunities', value: openOpps.length },
-    { label: 'Due ≤ 7 days', value: dueSoon },
-    { label: 'Win Rate', value: decided.length ? `${govWinRate}%` : '—' },
-    { label: 'Total Opportunities', value: opps.length },
-    { label: 'Active Clients', value: activeClients.length },
-    { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}` },
-    { label: 'Total Expenses', value: `$${totalExpenses.toLocaleString()}` },
+  const govStats: { label: string; value: string | number; icon: string; tint: Tint }[] = [
+    { label: 'Open Pipeline', value: `$${govPipelineValue.toLocaleString()}`, icon: 'money', tint: 'gold' },
+    { label: 'Open Opportunities', value: openOpps.length, icon: 'target', tint: 'berry' },
+    { label: 'Due ≤ 7 days', value: dueSoon, icon: 'clock', tint: dueSoon > 0 ? 'red' : 'neutral' },
+    { label: 'Win Rate', value: decided.length ? `${govWinRate}%` : '—', icon: 'check', tint: 'green' },
+    { label: 'Total Opportunities', value: opps.length, icon: 'doc', tint: 'neutral' },
+    { label: 'Active Clients', value: activeClients.length, icon: 'clients', tint: 'gold' },
+    { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: 'up', tint: 'green' },
+    { label: 'Total Expenses', value: `$${totalExpenses.toLocaleString()}`, icon: 'down', tint: 'red' },
   ]
 
   const stats = isGov ? govStats : privateStats
@@ -130,125 +171,163 @@ export default function Overview() {
         { key: 'lost', label: 'Lost' },
       ]
 
+  const maxStage = Math.max(1, ...pipelineStages.map(s => pipeline[s.key]))
+
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-1">Good morning, Olyad.</h2>
-      <p className="text-gray-400 mb-8 text-sm">Here&apos;s where the business stands right now.</p>
+    <div className="max-w-7xl mx-auto">
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-white">Good morning, Olyad.</h2>
+          <div className="gold-divider my-3" />
+          <p className="text-gray-500 text-sm">Here&apos;s where the business stands right now.</p>
+        </div>
+        <span className="text-xs text-gray-500 font-medium rounded-full border border-gray-800 bg-gray-900 px-3 py-1.5">{today}</span>
+      </div>
 
       {!isGov && followups > 0 && (
-        <Link href="/followups" className="block mb-8 bg-amber-950/40 border border-amber-800/60 rounded-xl p-4 hover:bg-amber-950/60 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-amber-300 font-semibold">{followups} lead{followups === 1 ? '' : 's'} need follow-up</p>
-              <p className="text-amber-200/60 text-xs mt-0.5">No contact in 3+ days. Click to draft replies.</p>
+        <Link href="/followups" className="block mb-8 rounded-2xl p-4 border border-amber-800 bg-amber-950 hover:brightness-[0.99] transition card-hover">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500">
+                <StatIcon name="clock" />
+              </span>
+              <div>
+                <p className="text-amber-300 font-semibold">{followups} lead{followups === 1 ? '' : 's'} need follow-up</p>
+                <p className="text-amber-200 text-xs mt-0.5 opacity-80">No contact in 3+ days. Click to draft replies.</p>
+              </div>
             </div>
-            <span className="text-amber-400 text-sm">Review →</span>
+            <span className="text-amber-400 text-sm font-semibold whitespace-nowrap">Review →</span>
           </div>
         </Link>
       )}
 
       {isGov && dueSoon > 0 && (
-        <Link href="/opportunities" className="block mb-8 bg-red-950/40 border border-red-800/60 rounded-xl p-4 hover:bg-red-950/60 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-red-300 font-semibold">{dueSoon} opportunit{dueSoon === 1 ? 'y' : 'ies'} due within 7 days</p>
-              <p className="text-red-200/60 text-xs mt-0.5">Solicitation deadlines approaching. Click to review.</p>
+        <Link href="/opportunities" className="block mb-8 rounded-2xl p-4 border border-red-800 bg-red-950 hover:brightness-[0.99] transition card-hover">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 text-red-400">
+                <StatIcon name="clock" />
+              </span>
+              <div>
+                <p className="text-red-300 font-semibold">{dueSoon} opportunit{dueSoon === 1 ? 'y' : 'ies'} due within 7 days</p>
+                <p className="text-red-200 text-xs mt-0.5 opacity-80">Solicitation deadlines approaching. Click to review.</p>
+              </div>
             </div>
-            <span className="text-red-400 text-sm">Review →</span>
+            <span className="text-red-400 text-sm font-semibold whitespace-nowrap">Review →</span>
           </div>
         </Link>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 mb-10">
         {stats.map(s => (
-          <div key={s.label} className="bg-gray-900 rounded-xl p-5 border border-gray-800">
-            <p className="text-xs text-gray-500 mb-1">{s.label}</p>
-            <p className="text-2xl font-bold text-white">{s.value}</p>
-          </div>
+          <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} tint={s.tint} />
         ))}
       </div>
 
-      <h3 className="text-lg font-semibold mb-4">Pipeline</h3>
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-10">
-        {pipelineStages.map(s => (
-          <div key={s.key} className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-sky-400">{pipeline[s.key]}</p>
-            <p className="text-xs text-gray-400 mt-1">{s.label}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Pipeline as a horizontal funnel */}
+        <section className="lg:col-span-2">
+          <h3 className="text-lg font-semibold mb-4 text-white">Pipeline</h3>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+            {pipelineStages.map(s => {
+              const v = pipeline[s.key]
+              const pct = Math.round((v / maxStage) * 100)
+              const isLost = s.key === 'lost'
+              return (
+                <div key={s.key}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-medium text-gray-400">{s.label}</span>
+                    <span className="text-sm font-bold text-white">{v}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.max(pct, v > 0 ? 6 : 0)}%`,
+                        background: isLost
+                          ? 'linear-gradient(90deg,#e7c2c2,#dc2626)'
+                          : 'linear-gradient(90deg,#c9a961,#9a7723)',
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        ))}
-      </div>
+        </section>
 
-      {isGov ? (
-        <>
-          <h3 className="text-lg font-semibold mb-4">Closing Soon</h3>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-            {openOpps.length === 0 ? (
-              <p className="text-gray-500 p-6 text-sm">No open opportunities. Add one in the Opportunities tab.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="border-b border-gray-800 text-gray-500 text-xs uppercase">
-                  <tr>
-                    <th className="text-left p-4">Title</th>
-                    <th className="text-left p-4">Agency</th>
-                    <th className="text-right p-4">Value</th>
-                    <th className="text-left p-4">Due</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...openOpps]
-                    .filter(o => o.dueDate)
-                    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-                    .slice(0, 5)
-                    .map(o => {
-                      const days = Math.ceil((new Date(o.dueDate!).getTime() - Date.now()) / 86400000)
-                      const cls = days <= 7 ? 'text-red-400' : days <= 21 ? 'text-amber-400' : 'text-gray-400'
-                      return (
-                        <tr key={o.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/50">
-                          <td className="p-4 font-medium">{o.title}</td>
-                          <td className="p-4 text-gray-400">{o.agency}</td>
-                          <td className="p-4 text-right text-gray-300">{o.value ? `$${Number(o.value).toLocaleString()}` : '—'}</td>
-                          <td className={`p-4 ${cls}`}>{days < 0 ? 'past due' : `${days}d`}</td>
-                        </tr>
-                      )
-                    })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          <h3 className="text-lg font-semibold mb-4">Recent Leads</h3>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-            {leads.length === 0 ? (
-              <p className="text-gray-500 p-6 text-sm">No leads yet. Add your first lead in the Leads tab.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="border-b border-gray-800 text-gray-500 text-xs uppercase">
-                  <tr>
-                    <th className="text-left p-4">Name</th>
-                    <th className="text-left p-4">Company</th>
-                    <th className="text-left p-4">Status</th>
-                    <th className="text-left p-4">Touchpoints</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leads.slice(-5).reverse().map(l => (
-                    <tr key={l.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/50">
-                      <td className="p-4 font-medium">{l.name}</td>
-                      <td className="p-4 text-gray-400">{l.company}</td>
-                      <td className="p-4">
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-900 text-sky-300 capitalize">{l.status}</span>
-                      </td>
-                      <td className="p-4 text-gray-400">{(l.touchpoints || []).length}</td>
+        {/* Recent activity table */}
+        <section className="lg:col-span-3">
+          <h3 className="text-lg font-semibold mb-4 text-white">{isGov ? 'Closing Soon' : 'Recent Leads'}</h3>
+          {isGov ? (
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+              {openOpps.length === 0 ? (
+                <p className="text-gray-500 p-6 text-sm">No open opportunities. Add one in the Opportunities tab.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="border-b border-gray-800 text-gray-500 text-[11px] uppercase tracking-wide">
+                    <tr>
+                      <th className="text-left p-4 font-semibold">Title</th>
+                      <th className="text-left p-4 font-semibold">Agency</th>
+                      <th className="text-right p-4 font-semibold">Value</th>
+                      <th className="text-left p-4 font-semibold">Due</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </>
-      )}
+                  </thead>
+                  <tbody>
+                    {[...openOpps]
+                      .filter(o => o.dueDate)
+                      .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+                      .slice(0, 5)
+                      .map(o => {
+                        const days = Math.ceil((new Date(o.dueDate!).getTime() - Date.now()) / 86400000)
+                        const cls = days <= 7 ? 'text-red-400' : days <= 21 ? 'text-amber-400' : 'text-gray-400'
+                        return (
+                          <tr key={o.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-950 transition-colors">
+                            <td className="p-4 font-medium text-white">{o.title}</td>
+                            <td className="p-4 text-gray-400">{o.agency}</td>
+                            <td className="p-4 text-right text-gray-300 font-medium">{o.value ? `$${Number(o.value).toLocaleString()}` : '—'}</td>
+                            <td className={`p-4 font-semibold ${cls}`}>{days < 0 ? 'past due' : `${days}d`}</td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ) : (
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+              {leads.length === 0 ? (
+                <p className="text-gray-500 p-6 text-sm">No leads yet. Add your first lead in the Leads tab.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="border-b border-gray-800 text-gray-500 text-[11px] uppercase tracking-wide">
+                    <tr>
+                      <th className="text-left p-4 font-semibold">Name</th>
+                      <th className="text-left p-4 font-semibold">Company</th>
+                      <th className="text-left p-4 font-semibold">Status</th>
+                      <th className="text-right p-4 font-semibold">Touchpoints</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leads.slice(-5).reverse().map(l => (
+                      <tr key={l.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-950 transition-colors">
+                        <td className="p-4 font-medium text-white">{l.name}</td>
+                        <td className="p-4 text-gray-400">{l.company}</td>
+                        <td className="p-4">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-sky-300 capitalize">{l.status}</span>
+                        </td>
+                        <td className="p-4 text-right text-gray-400">{(l.touchpoints || []).length}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   )
 }

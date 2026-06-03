@@ -18,18 +18,28 @@ export default function TopBar() {
     router.push(key === 'client' ? '/clients' : '/')
   }
 
+  async function logout() {
+    await fetch('/api/logout', { method: 'POST' }).catch(() => {})
+    window.location.href = '/login'
+  }
+
   return (
-    <header className="h-14 shrink-0 bg-gray-950 border-b border-gray-800 flex items-center px-6 gap-4">
-      <span className="text-xs text-gray-600 uppercase tracking-widest">Workspace</span>
-      <div className="flex bg-gray-900 border border-gray-800 rounded-lg p-0.5">
+    <header className="h-16 shrink-0 glass-bar border-b border-gray-800 flex items-center px-6 gap-4 z-10">
+      <span className="hidden sm:inline text-[10px] text-gray-500 uppercase tracking-[0.2em] font-semibold">
+        Workspace
+      </span>
+
+      <div className="flex bg-gray-950 border border-gray-800 rounded-xl p-1 shadow-soft">
         {TABS.map(t => {
           const active = workspace === t.key
           return (
             <button
               key={t.key}
               onClick={() => switchTo(t.key)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                active ? 'bg-blue-800 text-white' : 'text-gray-400 hover:text-white'
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                active
+                  ? 'bg-blue-800 text-white'
+                  : 'text-gray-500 hover:text-gray-300'
               }`}
             >
               {t.label}
@@ -37,9 +47,21 @@ export default function TopBar() {
           )
         })}
       </div>
-      <span className="text-xs text-gray-600">
+
+      <span className="hidden md:inline text-xs text-gray-500">
         {TABS.find(t => t.key === workspace)?.hint}
       </span>
+
+      <button
+        onClick={logout}
+        className="ml-auto flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-300 hover:border-gray-700 transition-colors"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <path d="m16 17 5-5-5-5M21 12H9" />
+        </svg>
+        Sign out
+      </button>
     </header>
   )
 }

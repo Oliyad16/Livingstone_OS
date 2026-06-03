@@ -107,7 +107,7 @@ export default function Clients() {
                   <td className="p-4 text-green-400 font-medium">
                     {c.type === 'retainer' ? `$${Number(c.monthlyValue).toLocaleString()}/mo` : `$${Number(c.projectValue).toLocaleString()}`}
                   </td>
-                  <td className="p-4 text-gray-400">{c.startDate}</td>
+                  <td className="p-4 text-gray-400 whitespace-nowrap">{c.startDate ? new Date(c.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                   <td className="p-4">
                     <span className={`px-2 py-0.5 rounded-full text-xs ${c.status === 'active' ? 'bg-green-900 text-green-300' : 'bg-gray-800 text-gray-500'}`}>{c.status}</span>
                   </td>
