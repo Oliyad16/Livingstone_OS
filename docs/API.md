@@ -6,11 +6,30 @@ and filter to it. Routes that read the DB return a clean `{error}` JSON on failu
 
 ---
 
+All routes are behind the access gate when `DASHBOARD_PASSWORD` is set: requests
+without a valid session cookie get `401` (API) or a redirect to `/login` (pages).
+Exceptions: `/login`, `/api/login`, `/api/logout`, and `/api/posts/daily` (which
+uses `CRON_SECRET` instead). See SECURITY.md.
+
+---
+
 ## System
 
 ### `POST /api/init`
 Creates/migrates all tables (idempotent). Run once after pointing at a fresh DB.
 → `{ ok: true, message: "Schema initialized." }`
+
+---
+
+## Auth
+
+### `POST /api/login`
+Exchange the shared passphrase for a session cookie. Body: `{ password }`
+→ `{ ok: true }` + httpOnly `lv_session` cookie, or `401 { error }`.
+When `DASHBOARD_PASSWORD` is unset → `{ ok: true, gateDisabled: true }`.
+
+### `POST /api/logout`
+Clears the session cookie. → `{ ok: true }`
 
 ---
 
@@ -126,9 +145,11 @@ Body: `{ id }`
 ### `GET /api/posts/suggestions`
 → `{ topics: string[] }` — rotating GEO topic ideas.
 
-### `GET|POST /api/posts/daily`
-Idempotent: generate one draft today on a rotating topic if none exists yet.
-Called by the Vercel cron. → `{ ok, created, topic? }`
+### `POST /api/posts/daily`
+Idempotent: generate one draft today (private workspace) on a rotating topic if
+none exists yet. Called by the Vercel cron. Requires `Authorization: Bearer
+<CRON_SECRET>` when `CRON_SECRET` is set (otherwise the check is skipped).
+→ `{ ok, created, topic? }` | `401`
 
 ### `POST /api/posts/publish`
 Publish a post to LinkedIn, mark it posted. Body: `{ id }`

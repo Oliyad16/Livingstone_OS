@@ -11,9 +11,15 @@ integration degrades gracefully until you add its keys.
 All secrets live in `.env.local` (local) and Vercel's Environment Variables
 (production). `.env.local` is gitignored — never commit it.
 
+> The app works with only `DATABASE_URL` set. The **access gate is fail-open**:
+> until `DASHBOARD_PASSWORD` is set, the whole app is reachable without logging
+> in. Set it in production to lock the dashboard down.
+
 | Variable | Required | Used by | Where to get it |
 |---|---|---|---|
 | `DATABASE_URL` | **Yes** | All data | Neon dashboard → Connect, or local `postgresql://…` |
+| `DASHBOARD_PASSWORD` | **Prod** | Access gate (whole app) | Pick a long random string. When set, every page + API route requires logging in at `/login`. Leave blank to disable the gate (fresh/local installs). |
+| `CRON_SECRET` | For the cron | `/api/posts/daily` | Pick a long random string. Vercel Cron sends it as `Authorization: Bearer …`; the route rejects mismatches. Skipped when unset (local). |
 | `STRIPE_SECRET_KEY` | For revenue | Financials | Stripe → API keys → **restricted** key (read-only) |
 | `GOOGLE_CLIENT_ID` | For GA4 | Analytics | Google Cloud → OAuth client (**Web**) |
 | `GOOGLE_CLIENT_SECRET` | For GA4 | Analytics | same client |
@@ -142,4 +148,18 @@ Claude writes each post in your voice.
 2. In Vercel → Project → Settings → Environment Variables, set every variable
    you use in production (at minimum `DATABASE_URL`, `STRIPE_SECRET_KEY`, and the
    Google + LinkedIn vars if those are live).
-3. Redeploy after changing env vars (they only load on a fresh deploy).
+3. **Lock down access:** set `DASHBOARD_PASSWORD` (a long random string) and
+   `CRON_SECRET`. Until `DASHBOARD_PASSWORD` is set the app is reachable without
+   logging in (fail-open).
+4. Redeploy after changing env vars (they only load on a fresh deploy).
+5. **Run the schema migration once** after deploying: `POST /api/init`. It's
+   idempotent and also upgrades the lead-dedup index to be per-workspace.
+   Do this *before* setting `DASHBOARD_PASSWORD`, or log in first — the gate
+   protects `/api/init` too.
+
+## Logging in
+
+When `DASHBOARD_PASSWORD` is set, visiting any page redirects to `/login`. Enter
+the passphrase once; a signed, httpOnly session cookie (30-day) is stored and the
+proxy lets you through on subsequent requests. The cookie holds an HMAC of a fixed
+marker keyed by the password — the raw password is never stored client-side.

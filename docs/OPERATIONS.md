@@ -76,6 +76,8 @@ Requires `gws` authenticated with Sheets scope.
 
 | Symptom | Cause / fix |
 |---|---|
+| Redirected to `/login` / API returns `401` | The access gate is on (`DASHBOARD_PASSWORD` set). Log in at `/login`; the session cookie lasts 30 days. |
+| Daily post stopped appearing | Cron now needs `CRON_SECRET`. Confirm it's set in Vercel (Cron sends the `Authorization` header automatically). The route is POST-only — a manual browser GET no longer triggers it. |
 | Pages show empty / `connected:false` | `DATABASE_URL` missing or DB unreachable. Routes degrade gracefully; check the env var. |
 | Stripe sync 500 | Bad/missing `STRIPE_SECRET_KEY`, or schema missing the `(source,ext_id)` index — re-run `/api/init`. |
 | GA4 `redirect_uri_mismatch` | The redirect URI in the request isn't registered on the OAuth client. Add it **exactly** (no trailing slash). |

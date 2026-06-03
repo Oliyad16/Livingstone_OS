@@ -19,6 +19,28 @@ How secrets are handled, and the current open items.
 
 ---
 
+## Access control (the auth gate)
+
+The whole app sits behind a single-operator access gate (`proxy.ts` + `app/lib/auth.ts`):
+
+- Set **`DASHBOARD_PASSWORD`** → every page + API route requires logging in at
+  `/login`. The passphrase is exchanged (`POST /api/login`) for a signed, httpOnly
+  session cookie; the proxy verifies it on every request and returns `401` (API)
+  or redirects to `/login` (pages) otherwise.
+- **Fail-open by design:** with no `DASHBOARD_PASSWORD` set, the gate is disabled
+  so fresh/local installs work. **Production must set it.**
+- The cookie stores an HMAC (keyed by the password) of a fixed marker — not the
+  password itself — so it can be verified without a DB lookup and reveals nothing
+  if leaked.
+- The daily-post cron route (`/api/posts/daily`) is exempt from the session gate
+  (the cron has no session) and instead authenticates with **`CRON_SECRET`**
+  (`Authorization: Bearer …`, sent automatically by Vercel Cron).
+- Provider API error text (Stripe/GA4/Sheets/LinkedIn) is logged server-side and
+  replaced with generic messages before reaching the client, so rate-limit /
+  internal / OAuth details aren't disclosed.
+
+---
+
 ## Stripe key — use the right type
 
 The app uses a **restricted, read-only** key (`rk_live_…`) with only
@@ -31,6 +53,12 @@ that key has full account access.
 ## ⚠️ Open security items
 
 These require action in the provider dashboards (only the account owner can do them):
+
+### 0. 🔴 Enable the access gate in production — DO THIS FIRST
+The dashboard is internet-facing and **fail-open** until configured. In Vercel:
+- Set **`DASHBOARD_PASSWORD`** (long random string) → redeploy → confirm `/login` appears.
+- Set **`CRON_SECRET`** (long random string) so the daily cron is authenticated.
+- Re-run **`POST /api/init`** once to migrate the lead-dedup index (log in first).
 
 ### 1. 🔴 Roll the exposed Stripe secret key — HIGH PRIORITY
 A full-access standard secret key (`sk_live_…`) was pasted into a chat during
