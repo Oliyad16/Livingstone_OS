@@ -223,3 +223,37 @@ select option {
   border-radius: 999px;
   background: linear-gradient(90deg, #c9a961, #9a7723);
 }
+
+/* ── Print / PDF report layout ──────────────────────────────────────────
+   When the operator prints the Analytics page (Download Report → Save as PDF),
+   hide the app chrome and lay the report out cleanly on white pages. */
+@media print {
+  /* Hide everything except the report container. */
+  aside,
+  header.glass-bar {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  /* Keep cards/charts from splitting across page breaks. */
+  .break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Tighten spacing for paper. */
+  #report-root {
+    max-width: 100% !important;
+  }
+  @page {
+    margin: 14mm 12mm;
+  }
+}
+.printing aside,
+.printing header.glass-bar {
+  display: none;
+}

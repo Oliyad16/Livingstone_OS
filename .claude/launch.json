@@ -4,8 +4,9 @@
     {
       "name": "livingstone-dashboard",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": ["run", "dev", "--", "-p", "3100"],
+      "port": 3100,
+      "autoPort": false
     }
   ]
 }

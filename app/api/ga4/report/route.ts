@@ -5,11 +5,15 @@ import { sql } from '../../../lib/db'
 // Days → date strings. Anchor on UTC midnight so the arithmetic and the
 // .toISOString() formatting agree regardless of the server's local timezone
 // (mixing local-tz Date math with UTC ISO output caused an off-by-one day).
-function ranges(days: number) {
+//
+// `today` flag: include the current (partial) day instead of ending yesterday.
+// GA4 standard reports include today's data so far — useful for a "Today" view,
+// with the caveat that it's still settling.
+function ranges(days: number, today = false) {
   const dayMs = 86_400_000
   const now = new Date()
   const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  const end = todayUTC - dayMs // GA4 data lags ~1 day
+  const end = today ? todayUTC : todayUTC - dayMs // default lags ~1 day
   const start = end - (days - 1) * dayMs
   const priorEnd = start - dayMs
   const priorStart = priorEnd - (days - 1) * dayMs
@@ -18,10 +22,10 @@ function ranges(days: number) {
 }
 
 export async function POST(req: NextRequest) {
-  const { propertyId, propertyName, days = 28, save = false } = await req.json()
+  const { propertyId, propertyName, days = 28, save = false, today = false } = await req.json()
   if (!propertyId) return NextResponse.json({ error: 'propertyId required' }, { status: 400 })
 
-  const r = ranges(Number(days))
+  const r = ranges(Number(days), Boolean(today))
   const report = await fetchGa4Report(propertyId, r.start, r.end, r.priorStart, r.priorEnd)
 
   if (save) {
