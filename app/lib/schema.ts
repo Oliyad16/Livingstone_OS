@@ -233,6 +233,24 @@ export async function initSchema() {
   `
   await sql`CREATE INDEX IF NOT EXISTS client_installments_client_idx ON client_installments (client_id)`
 
+  // Security audit log: every login attempt (success or failure) with the
+  // caller's IP, user agent, and geolocated place. Drives the 3-strike
+  // lockout and the intruder-alert email. `alerted` marks the row that
+  // triggered an alert so one lockout = one email, not one per retry.
+  await sql`
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      id         TEXT PRIMARY KEY,
+      username   TEXT DEFAULT '',
+      ip         TEXT DEFAULT '',
+      user_agent TEXT DEFAULT '',
+      location   TEXT DEFAULT '',
+      success    BOOLEAN NOT NULL,
+      alerted    BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+  await sql`CREATE INDEX IF NOT EXISTS login_attempts_ip_idx ON login_attempts (ip, created_at)`
+
   // Single-row store for the connected LinkedIn account's OAuth tokens.
   await sql`
     CREATE TABLE IF NOT EXISTS linkedin_connection (
