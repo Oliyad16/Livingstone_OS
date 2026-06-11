@@ -147,6 +147,92 @@ export async function initSchema() {
     )
   `
 
+  // Intake-agent columns on opportunities. RFPMart (and similar) emails are read
+  // by the local fetch script, first-pass classified (RFI vs RFP), then verified +
+  // researched. These columns hold that triage state. Idempotent ALTERs so they
+  // apply to an existing opportunities table without a destructive migration.
+  //   opp_type        'RFI' | 'RFP' | 'unknown'   — the differentiated record type
+  //   verified        'pending' | 'verified' | 'rejected'
+  //   verify_notes    research/verification summary (SAM.gov cross-check, etc.)
+  //   source_email_id Gmail message id — the dedupe key so re-fetches don't double-insert
+  //   intake_at       when verification last ran
+  await sql`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS opp_type        TEXT DEFAULT 'unknown'`
+  await sql`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS verified        TEXT DEFAULT 'pending'`
+  await sql`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS verify_notes    TEXT DEFAULT ''`
+  await sql`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS source_email_id TEXT`
+  await sql`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS intake_at       TIMESTAMPTZ`
+
+  // One opportunity per source email — makes the fetch script safely re-runnable.
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS opportunities_source_email_idx
+    ON opportunities (source_email_id) WHERE source_email_id IS NOT NULL
+  `
+
+  // Deal-room columns. Each opportunity becomes a "folder": a plain-language
+  // summary plus a real Google Drive folder (created by the local sync-drive
+  // script via gws). drive_folder_id is the Drive id; drive_folder_url is its
+  // webViewLink for the "Open in Drive" button. Structured sub-objects that vary
+  // in presence (keyDates, keyPeople) live in the existing `extra` JSONB instead
+  // of dedicated columns.
+  await sql`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS drive_folder_id  TEXT`
+  await sql`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS drive_folder_url TEXT`
+  await sql`ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS summary          TEXT DEFAULT ''`
+
+  // Cached Drive file list per opportunity. The local sync-drive script lists the
+  // contract's Drive subfolders and upserts rows here so the deal-room page renders
+  // instantly without a live Drive call. `folder` is the subfolder a file sits in
+  // (Solicitation Docs / Our Responses / Research & Intel).
+  await sql`
+    CREATE TABLE IF NOT EXISTS opp_documents (
+      id            TEXT PRIMARY KEY,
+      opp_id        TEXT NOT NULL,
+      name          TEXT NOT NULL,
+      drive_file_id TEXT NOT NULL,
+      url           TEXT DEFAULT '',
+      mime_type     TEXT DEFAULT '',
+      folder        TEXT DEFAULT '',
+      size_bytes    BIGINT,
+      modified_at   TIMESTAMPTZ,
+      synced_at     TIMESTAMPTZ DEFAULT now()
+    )
+  `
+  await sql`CREATE INDEX IF NOT EXISTS opp_documents_opp_idx ON opp_documents (opp_id)`
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS opp_documents_file_idx ON opp_documents (opp_id, drive_file_id)`
+
+  // Payment-plan columns on clients. Deals range from simple retainers to
+  // hybrid setup-fee + monthly, to milestone projects. Fixed terms live here;
+  // the variable schedule lives in client_installments below.
+  //   setup_fee          one-time onboarding/setup fee (hybrid GEO deals)
+  //   billing_day        day-of-month the retainer bills (1-28)
+  //   contract_months    minimum term length in months (0 = month-to-month)
+  //   contract_end       computed/agreed end or renewal date
+  //   stripe_customer_id link to the real Stripe customer for payment history
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS setup_fee          NUMERIC DEFAULT 0`
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS billing_day        INT`
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS contract_months    INT DEFAULT 0`
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS contract_end       DATE`
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`
+
+  // Installment / milestone schedule per client. Covers deposit-milestone
+  // project plans ("50% deposit, 25% design, 25% launch"), setup fees, and any
+  // custom split. status is 'pending' | 'paid'; overdue is derived in the UI
+  // (due_date < today AND pending) so it never goes stale in the DB.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_installments (
+      id                TEXT PRIMARY KEY,
+      client_id         TEXT NOT NULL,
+      label             TEXT DEFAULT '',
+      amount            NUMERIC NOT NULL,
+      due_date          DATE,
+      status            TEXT DEFAULT 'pending',
+      paid_at           TIMESTAMPTZ,
+      stripe_invoice_id TEXT,
+      notes             TEXT DEFAULT '',
+      created_at        TIMESTAMPTZ DEFAULT now()
+    )
+  `
+  await sql`CREATE INDEX IF NOT EXISTS client_installments_client_idx ON client_installments (client_id)`
+
   // Single-row store for the connected LinkedIn account's OAuth tokens.
   await sql`
     CREATE TABLE IF NOT EXISTS linkedin_connection (

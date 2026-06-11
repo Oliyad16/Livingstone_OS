@@ -33,10 +33,10 @@ export function DonutChart({
   const total = data.reduce((s, d) => s + d.value, 0)
   return (
     <div className="relative h-full">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="60%" outerRadius="92%" paddingAngle={data.length > 1 ? 2 : 0} stroke="none" isAnimationActive>
-            {data.map((d, i) => <Cell key={d.name} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
+            {data.map((d, i) => <Cell key={`${d.name}-${i}`} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
           </Pie>
           <Tooltip content={({ active, payload }) =>
             active && payload?.length ? (
@@ -70,7 +70,7 @@ export function ChartLegend({
   return (
     <ul className="space-y-2">
       {data.map((d, i) => (
-        <li key={d.name} className="flex items-center gap-2 text-sm">
+        <li key={`${d.name}-${i}`} className="flex items-center gap-2 text-sm">
           <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
           <span className="text-gray-400 capitalize truncate">{d.name}</span>
           <span className="ml-auto font-semibold text-white">{format(d.value)}</span>
@@ -100,7 +100,7 @@ export function BarSeries({
   colorByIndex?: boolean
 }) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
       <BarChart data={data} layout={horizontal ? 'vertical' : 'horizontal'} margin={{ top: 8, right: 12, left: horizontal ? 8 : -8, bottom: 0 }}>
         <CartesianGrid stroke={CHART.grid} vertical={horizontal} horizontal={!horizontal} />
         {horizontal ? (
@@ -140,7 +140,7 @@ export function AreaTrend({
   format?: (n: number) => string
 }) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
       <AreaChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
         <defs>
           {series.map(s => (
@@ -175,7 +175,7 @@ export function HourBars({ data }: { data: { hour: number; users: number }[] }) 
     return { hour: h, label: h === 0 ? '12a' : h === 12 ? '12p' : h < 12 ? `${h}a` : `${h - 12}p`, users: found?.users || 0 }
   })
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
       <BarChart data={rows} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
         <CartesianGrid stroke={CHART.grid} vertical={false} />
         <XAxis dataKey="label" {...axisProps} interval={2} />

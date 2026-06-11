@@ -3,6 +3,10 @@
     {
       "path": "/api/posts/daily",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/leads/followups/prepare",
+      "schedule": "30 12 * * 1-5"
     }
   ]
 }

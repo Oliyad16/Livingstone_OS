@@ -167,7 +167,7 @@ function RealtimePanel({ propId }: { propId: string }) {
             </div>
             <p className="text-[11px] text-gray-500 mb-2">Pages being viewed right now</p>
             <div className="space-y-1">
-              {rt.topPages.slice(0, 5).map(p => <div key={p.path} className="flex justify-between text-xs"><span className="text-gray-300 truncate max-w-[280px]">{p.path}</span><span className="text-gray-500 shrink-0 ml-2">{p.users}</span></div>)}
+              {rt.topPages.slice(0, 5).map((p, idx) => <div key={`${p.path}-${idx}`} className="flex justify-between text-xs"><span className="text-gray-300 truncate max-w-[280px]">{p.path}</span><span className="text-gray-500 shrink-0 ml-2">{p.users}</span></div>)}
               {rt.topPages.length === 0 && <p className="text-gray-600 text-xs">Nobody on the site this minute.</p>}
             </div>
           </div>

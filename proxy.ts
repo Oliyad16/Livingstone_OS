@@ -22,6 +22,23 @@ export function proxy(req: NextRequest) {
   // The cron route guards itself with CRON_SECRET (checked in the handler).
   if (pathname === '/api/posts/daily') return NextResponse.next()
 
+  // Follow-up auto-draft cron: self-guards with CRON_SECRET in-handler. It only
+  // writes 'draft' rows (the approval gate) — nothing sends without approval.
+  if (pathname === '/api/leads/followups/prepare') return NextResponse.next()
+
+  // Intake routes are hit by the local fetch script (no session); they guard
+  // themselves with CRON_SECRET in-handler, same as the cron above.
+  if (pathname.startsWith('/api/intake/')) return NextResponse.next()
+
+  // The Drive-sync script posts the cached document list to
+  // /api/opportunities/<id>/documents with no session; it self-guards with
+  // CRON_SECRET. (The GET-by-id deal-room route stays behind the session gate.)
+  if (/^\/api\/opportunities\/[^/]+\/documents$/.test(pathname)) return NextResponse.next()
+
+  // The enrich route self-guards (accepts a valid session cookie OR a CRON_SECRET
+  // bearer) so both the browser button and the local sync-drive --enrich can call it.
+  if (/^\/api\/opportunities\/[^/]+\/enrich$/.test(pathname)) return NextResponse.next()
+
   if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
     return NextResponse.next()
   }

@@ -6,17 +6,22 @@ const SELECT = `
   SELECT id, name, company, email, phone, service, type, status, notes,
          monthly_value AS "monthlyValue",
          project_value AS "projectValue",
+         setup_fee     AS "setupFee",
+         billing_day   AS "billingDay",
+         contract_months AS "contractMonths",
+         contract_end  AS "contractEnd",
+         stripe_customer_id AS "stripeCustomerId",
          start_date    AS "startDate",
          ga4_property_id AS "ga4PropertyId",
          created_at    AS "createdAt"
   FROM clients
 `
 
-type ClientRow = { monthlyValue: string | number; projectValue: string | number; [k: string]: unknown }
+type ClientRow = { monthlyValue: string | number; projectValue: string | number; setupFee: string | number; [k: string]: unknown }
 
 // NUMERIC columns come back as strings from node-postgres; coerce at the
 // boundary so the client always gets real numbers (prevents string-concat bugs).
-const coerce = (rows: ClientRow[]) => coerceNums(rows, ['monthlyValue', 'projectValue'])
+const coerce = (rows: ClientRow[]) => coerceNums(rows, ['monthlyValue', 'projectValue', 'setupFee'])
 
 export const GET = safe(async (req) => {
   // 'client' workspace is the unified client cockpit: return clients from BOTH
@@ -39,10 +44,14 @@ export async function POST(req: NextRequest) {
   const startDate = body.startDate || new Date().toISOString().split('T')[0]
   await sql`
     INSERT INTO clients (id, name, company, email, phone, service, type,
-                         monthly_value, project_value, status, start_date, notes, workspace)
+                         monthly_value, project_value, setup_fee, billing_day,
+                         contract_months, contract_end, stripe_customer_id,
+                         status, start_date, notes, workspace)
     VALUES (${id}, ${body.name}, ${body.company || ''}, ${body.email || ''}, ${body.phone || ''},
             ${body.service || 'GEO'}, ${body.type || 'retainer'},
             ${body.monthlyValue || 0}, ${body.projectValue || 0},
+            ${body.setupFee || 0}, ${body.billingDay || null},
+            ${body.contractMonths || 0}, ${body.contractEnd || null}, ${body.stripeCustomerId || null},
             'active', ${startDate}, ${body.notes || ''}, ${ws})
   `
   const rows = (await sql.query(`${SELECT} WHERE id = $1`, [id])) as ClientRow[]
@@ -65,6 +74,12 @@ export async function PUT(req: NextRequest) {
       type          = ${body.type         ?? cur.type},
       monthly_value = ${body.monthlyValue ?? cur.monthlyValue},
       project_value = ${body.projectValue ?? cur.projectValue},
+      setup_fee     = ${body.setupFee     ?? cur.setupFee},
+      billing_day   = ${body.billingDay !== undefined ? body.billingDay : cur.billingDay},
+      contract_months = ${body.contractMonths ?? cur.contractMonths},
+      contract_end  = ${body.contractEnd !== undefined ? body.contractEnd : cur.contractEnd},
+      stripe_customer_id = ${body.stripeCustomerId !== undefined ? body.stripeCustomerId : cur.stripeCustomerId},
+      start_date    = ${body.startDate    ?? cur.startDate},
       status        = ${body.status       ?? cur.status},
       notes         = ${body.notes        ?? cur.notes},
       ga4_property_id = ${body.ga4PropertyId !== undefined ? body.ga4PropertyId : cur.ga4PropertyId}

@@ -1,11 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useWorkspace } from '../components/WorkspaceContext'
 
 interface Opp {
   id: string; title: string; solNo: string; agency: string; naics: string
   vehicle: string; setAside: string; value: number; dueDate: string | null
   stage: string; source: string; url: string; notes: string
+  summary?: string; driveFolderUrl?: string | null
 }
 
 const STAGES = ['identified', 'qualified', 'bid', 'submitted', 'won', 'lost']
@@ -138,7 +140,10 @@ export default function Opportunities() {
                 return (
                   <tr key={o.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
                     <td className="p-3">
-                      <p className="font-medium">{o.title}</p>
+                      <Link href={`/opportunities/${o.id}`} className="font-medium text-white hover:text-gold inline-flex items-center gap-1.5">
+                        <span className="text-gray-500">{o.driveFolderUrl ? '📁' : '📄'}</span>
+                        {o.title}
+                      </Link>
                       <p className="text-xs text-gray-500">{o.agency}{o.solNo && ` · ${o.solNo}`}</p>
                     </td>
                     <td className="p-3 text-gray-400">{o.vehicle || '—'}</td>

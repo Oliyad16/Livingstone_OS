@@ -6,11 +6,11 @@ import { useWorkspace } from '../components/WorkspaceContext'
 interface Client {
   id: string; name: string; company: string; email: string; phone: string
   service: string; type: string; monthlyValue: number; projectValue: number
-  status: string; startDate: string; notes: string
+  setupFee: number; status: string; startDate: string; notes: string
 }
 
 const SERVICES = ['GEO', 'SEO', 'website', 'software', 'other']
-const blank = { name: '', company: '', email: '', phone: '', service: 'GEO', type: 'retainer', monthlyValue: 0, projectValue: 0, startDate: new Date().toISOString().split('T')[0], notes: '' }
+const blank = { name: '', company: '', email: '', phone: '', service: 'GEO', type: 'retainer', monthlyValue: 0, projectValue: 0, setupFee: 0, startDate: new Date().toISOString().split('T')[0], notes: '' }
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([])
@@ -68,6 +68,7 @@ export default function Clients() {
             </select>
             <input type="number" placeholder="Monthly value ($)" value={form.monthlyValue || ''} onChange={e => setForm({ ...form, monthlyValue: Number(e.target.value) })} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-700" />
             <input type="number" placeholder="Project value ($)" value={form.projectValue || ''} onChange={e => setForm({ ...form, projectValue: Number(e.target.value) })} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-700" />
+            <input type="number" placeholder="Setup fee ($, optional)" value={form.setupFee || ''} onChange={e => setForm({ ...form, setupFee: Number(e.target.value) })} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-700" />
             <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-700" />
             <textarea placeholder="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="col-span-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none resize-none h-20" />
           </div>
@@ -106,6 +107,7 @@ export default function Clients() {
                   <td className="p-4 text-gray-400 capitalize">{c.type}</td>
                   <td className="p-4 text-green-400 font-medium">
                     {c.type === 'retainer' ? `$${Number(c.monthlyValue).toLocaleString()}/mo` : `$${Number(c.projectValue).toLocaleString()}`}
+                    {Number(c.setupFee) > 0 && <span className="text-xs text-gray-500 font-normal"> +${Number(c.setupFee).toLocaleString()} setup</span>}
                   </td>
                   <td className="p-4 text-gray-400 whitespace-nowrap">{c.startDate ? new Date(c.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                   <td className="p-4">

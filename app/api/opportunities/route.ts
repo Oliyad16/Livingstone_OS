@@ -5,6 +5,9 @@ import { safe, workspaceOf, normalizeWorkspace, coerceNums } from '../../lib/han
 const SELECT = `
   SELECT id, title, sol_no AS "solNo", agency, naics, vehicle, set_aside AS "setAside",
          value, due_date::text AS "dueDate", stage, source, url, notes, extra,
+         opp_type AS "oppType", verified, verify_notes AS "verifyNotes",
+         source_email_id AS "sourceEmailId", intake_at AS "intakeAt",
+         summary, drive_folder_id AS "driveFolderId", drive_folder_url AS "driveFolderUrl",
          created_at AS "createdAt"
   FROM opportunities
 `
@@ -29,10 +32,11 @@ export async function POST(req: NextRequest) {
   const ws = normalizeWorkspace(b.workspace, true)
   const id = Date.now().toString()
   await sql`
-    INSERT INTO opportunities (id, title, sol_no, agency, naics, vehicle, set_aside, value, due_date, stage, source, url, notes, extra, workspace)
+    INSERT INTO opportunities (id, title, sol_no, agency, naics, vehicle, set_aside, value, due_date, stage, source, url, notes, extra, workspace, opp_type, verified, source_email_id, summary)
     VALUES (${id}, ${b.title}, ${b.solNo || ''}, ${b.agency || ''}, ${b.naics || ''}, ${b.vehicle || ''},
             ${b.setAside || ''}, ${b.value || 0}, ${b.dueDate || null}, ${b.stage || 'identified'},
-            ${b.source || 'manual'}, ${b.url || ''}, ${b.notes || ''}, ${JSON.stringify(b.extra || {})}::jsonb, ${ws})
+            ${b.source || 'manual'}, ${b.url || ''}, ${b.notes || ''}, ${JSON.stringify(b.extra || {})}::jsonb, ${ws},
+            ${b.oppType || 'unknown'}, ${b.verified || 'pending'}, ${b.sourceEmailId || null}, ${b.summary || ''})
   `
   const rows = (await sql.query(`${SELECT} WHERE id = $1`, [id])) as Row[]
   return NextResponse.json(coerce(rows)[0], { status: 201 })
@@ -57,7 +61,14 @@ export async function PUT(req: NextRequest) {
       stage     = ${b.stage    ?? cur.stage},
       source    = ${b.source   ?? cur.source},
       url       = ${b.url      ?? cur.url},
-      notes     = ${b.notes    ?? cur.notes}
+      notes     = ${b.notes    ?? cur.notes},
+      opp_type  = ${b.oppType  ?? cur.oppType},
+      verified  = ${b.verified ?? cur.verified},
+      verify_notes = ${b.verifyNotes ?? cur.verifyNotes},
+      summary   = ${b.summary  ?? cur.summary},
+      drive_folder_id  = ${b.driveFolderId  ?? cur.driveFolderId},
+      drive_folder_url = ${b.driveFolderUrl ?? cur.driveFolderUrl},
+      extra     = ${b.extra !== undefined ? JSON.stringify(b.extra) : JSON.stringify(cur.extra ?? {})}::jsonb
     WHERE id = ${b.id}
   `
   const rows = (await sql.query(`${SELECT} WHERE id = $1`, [b.id])) as Row[]
@@ -66,6 +77,8 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const { id } = await req.json()
+  // Also drop the cached Drive document rows for this opp (no FK cascade).
+  await sql`DELETE FROM opp_documents WHERE opp_id = ${id}`
   await sql`DELETE FROM opportunities WHERE id = ${id}`
   return NextResponse.json({ ok: true })
 }

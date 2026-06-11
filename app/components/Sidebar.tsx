@@ -33,6 +33,8 @@ function Icon({ name }: { name: string }) {
       return <svg {...common}><path d="M12 2v20M17 6.5c0-2-2.2-3-5-3s-5 1-5 3 2.5 2.8 5 3.5 5 1.5 5 3.5-2.2 3-5 3-5-1-5-3" /></svg>
     case '/opportunities':
       return <svg {...common}><path d="m12 2 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.8 7.2 17l.9-5.4L4.2 7.7l5.4-.8z" /></svg>
+    case '/opportunities/intake':
+      return <svg {...common}><path d="M4 4h16v12H5.2L4 17.2z" /><path d="M8 9h8M8 12h5" /></svg>
     default:
       return <svg {...common}><circle cx="12" cy="12" r="9" /></svg>
   }
@@ -53,6 +55,7 @@ const PRIVATE_NAV = [
 const GOVERNMENT_NAV = [
   { href: '/', label: 'Overview' },
   { href: '/opportunities', label: 'Opportunities' },
+  { href: '/opportunities/intake', label: 'Intake' },
   { href: '/clients', label: 'Clients' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/financials', label: 'Financials' },

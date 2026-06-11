@@ -30,6 +30,21 @@ function socialPlatform(source: string): string | null {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
+// GA4 can return more than one row that collapses to the same label (e.g. a real
+// "/" path plus a blank path that we fall back to "/"). Sum the metric across
+// collisions so the data is correct and every label is unique downstream.
+function sumByLabel<K extends string, V extends string>(
+  rows: { label: string; value: number }[],
+  labelKey: K,
+  valueKey: V,
+): (Record<K, string> & Record<V, number>)[] {
+  const merged = new Map<string, number>()
+  for (const r of rows) merged.set(r.label, (merged.get(r.label) || 0) + r.value)
+  return [...merged.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, value]) => ({ [labelKey]: label, [valueKey]: value }) as Record<K, string> & Record<V, number>)
+}
+
 async function runReport(propertyId: string, body: unknown): Promise<RunReportResponse> {
   const token = await getAccessToken()
   const res = await fetch(`${DATA_API}/properties/${propertyId}:runReport`, {
@@ -172,10 +187,14 @@ export async function fetchGa4Report(
     orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
     limit: 10,
   })
-  const topPages = (pagesRes.rows || []).map(r => ({
-    path: r.dimensionValues?.[0]?.value || '/',
-    views: num(r.metricValues?.[0]?.value),
-  }))
+  const topPages = sumByLabel(
+    (pagesRes.rows || []).map(r => ({
+      label: r.dimensionValues?.[0]?.value || '/',
+      value: num(r.metricValues?.[0]?.value),
+    })),
+    'path',
+    'views',
+  )
 
   // 4. GEO lens — sessions by source, current + prior, to isolate organic + AI referrers.
   const sourceRes = await runReport(propertyId, {
@@ -464,10 +483,14 @@ export async function fetchGa4Realtime(propertyId: string): Promise<Ga4Realtime>
     orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
     limit: 8,
   })
-  const topPages = (pagesRes.rows || []).map(r => ({
-    path: r.dimensionValues?.[0]?.value || '(not set)',
-    users: num(r.metricValues?.[0]?.value),
-  }))
+  const topPages = sumByLabel(
+    (pagesRes.rows || []).map(r => ({
+      label: r.dimensionValues?.[0]?.value || '(not set)',
+      value: num(r.metricValues?.[0]?.value),
+    })),
+    'path',
+    'users',
+  )
 
   const deviceRes = await runRealtimeReport(propertyId, {
     dimensions: [{ name: 'deviceCategory' }],

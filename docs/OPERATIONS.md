@@ -45,6 +45,73 @@ touchpoint on the lead (clearing it from the Follow-ups queue).
 
 ---
 
+## Government opportunity intake (RFPMart → RFI/RFP triage)
+
+Pulls RFPMart contract emails, classifies each **RFI vs RFP**, and queues them in
+the Government workspace's **Intake** tab for verification. Like the sender above,
+the fetch step uses the local `gws` CLI, so it runs on your machine, not Vercel.
+
+**One-time:** make sure `gws` is authenticated — `gws auth login` (its token expires;
+a `401 invalid_grant` means re-auth). After deploying schema changes, run
+`POST /api/init` once to add the intake columns.
+
+**The loop:**
+
+```bash
+npm run fetch-rfpmart                 # read RFPMart mail, classify, queue as pending
+node scripts/fetch-rfpmart.mjs --dry-run   # preview parsed items, ingest nothing
+node scripts/fetch-rfpmart.mjs --days 60   # widen the lookback window (default 45d)
+node scripts/fetch-rfpmart.mjs --digest    # after ingest, email yourself the digest
+```
+
+1. **Fetch** queues each email as a `pending` opportunity (deduped on the Gmail
+   message id, so it's safe to re-run).
+2. **Verify** in **Government → Intake**: each item shows RFI vs RFP in two columns
+   with different actions —
+   - **RFP** → *Verify real* / *Reject*, then *Send to pipeline* (promotes it into
+     the main Opportunities table at `qualified` for a bid/no-bid).
+   - **RFI** → *Worth shaping* / *Skip* (parks it on watch to influence the future RFP).
+3. **Notify** (optional): `--digest` (or `POST /api/intake/digest`) enqueues an
+   `email_outbox` row to `OWNER_EMAIL`; `npm run send-outbox` then emails it to you.
+
+> **Deeper research:** the in-app classify is a fast first pass. Authoritative
+> verification (SAM.gov cross-check, web search, link/sender validation, future
+> due-date check) is done with Claude + web and written back via
+> `PUT /api/intake/<id>/verify`. Env: `OWNER_EMAIL` for the digest; `CRON_SECRET`
+> (if set) must be passed by the script — it reads it from `.env.local`.
+
+---
+
+## Opportunity deal rooms (Drive folders per contract)
+
+Each government opportunity is a **deal room**: click its name on the Opportunities
+page to open a detail page with the summary, key facts, key dates, key people, and a
+**Google Drive folder** holding the documents. Drive folders are created/listed by
+the local `gws` CLI, so this step runs on your machine, not Vercel.
+
+**One-time:** `gws auth login` with Drive scope (a `401 invalid_grant` means re-auth).
+Optionally set `DRIVE_ROOT_FOLDER_ID` in `.env.local` to nest everything under an
+existing Drive folder. Run `POST /api/init` once to add the deal-room columns.
+
+```bash
+npm run sync-drive                      # create folders + cache files for all gov opps
+node scripts/sync-drive.mjs --id 123    # one opportunity only
+node scripts/sync-drive.mjs --dry-run   # show the folder tree it would build, write nothing
+```
+
+It builds `Government Contracts / <year> / <contract>` with three subfolders —
+**Solicitation Docs**, **Our Responses**, **Research & Intel** — lists their files,
+and caches that list in `opp_documents` so the deal-room page renders instantly. The
+page shows an **Open in Drive** button and the file list per subfolder. Re-run after
+dropping new documents in Drive or writing a response. Folder ids are cached locally
+in `.drive-cache.json` so re-runs don't re-search Drive.
+
+> Summary, key dates, and key people are **agent-drafted on intake** and fully
+> **editable inline** on the deal-room page (edits save on blur). The Drive sync only
+> touches the document list + folder link.
+
+---
+
 ## Importing leads from Google Sheets
 
 1. Get the spreadsheet ID (from its URL).

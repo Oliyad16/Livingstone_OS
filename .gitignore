@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 
+# local working files (DB dumps contain client data — never commit)
+.tmp-*
+.automation.log
+
 # debug
 npm-debug.log*
 yarn-debug.log*

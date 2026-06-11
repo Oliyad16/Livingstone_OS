@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "send-outbox": "node scripts/send-outbox.mjs"
+    "send-outbox": "node scripts/send-outbox.mjs",
+    "fetch-rfpmart": "node scripts/fetch-rfpmart.mjs",
+    "sync-drive": "node scripts/sync-drive.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
