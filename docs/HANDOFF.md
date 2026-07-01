@@ -107,8 +107,17 @@ Sent via Gmail (gws) → touchpoint auto-logged → lead exits the stale queue
 - **Gov intake:** RFPMart emails → `scripts/fetch-rfpmart.mjs` → classify
   RFI/RFP → verify → triage UI; deal rooms with real Drive folders
   (`scripts/sync-drive.mjs`, `--enrich` for AI extraction of budget/dates/people).
-- **Authority:** daily LinkedIn post draft (1pm UTC cron, rotating GEO topics)
-  → approve on /authority → publish via LinkedIn OAuth.
+- **Authority:** Mon/Wed/Fri LinkedIn content engine with a prepared-ahead
+  posting calendar (see `docs/CONTENT-STRATEGY.md`). Pillars: Mon `ranking`,
+  Wed `news` (day-of only), Fri `education`. Four scheduled Claude agents on
+  the owner's subscription: `linkedin-monthly-prep` (25th — reserves all slots
+  + pre-drafts education), `linkedin-ranking-research` (Sun 5pm — scans + drafts
+  Monday), `linkedin-news-day-of` (Wed 8am), `linkedin-authority-drafts`
+  (Mon/Wed/Fri 9:30am readiness check + fallback). Calendar = posts rows with
+  `scheduled_for` (`planned` → `draft`). Last resort: Vercel cron
+  `/api/posts/daily` (17:00 UTC Mon/Wed/Fri, idempotent). Drafts → approve on
+  /authority → publish via LinkedIn OAuth (company page when `LINKEDIN_ORG_ID`
+  set). Text-only for now; images/video are a planned later integration.
 - **Financials:** Stripe charge sync (`/api/financials/sync-stripe`) + manual
   entries; revenue/expense/net.
 - **Analytics:** GA4 realtime, audience, peak times, AI-referral tracking.
@@ -147,13 +156,23 @@ bash scripts/setup-automation.sh   # install local crons (drafts + sending)
 ```
 
 Deploy: push to `command-center` → Vercel auto-builds. After schema changes,
-hit `POST /api/init` once on production.
+hit `POST /api/init` once on production — it requires auth there:
+`curl -X POST https://livingstone-os.vercel.app/api/init -H "Authorization: Bearer $CRON_SECRET"`
+(or just call it from the logged-in browser).
+
+**Fail-closed guarantees (production):** missing `DASHBOARD_PASSWORD` → the app
+returns 503 everywhere instead of opening up; missing `CRON_SECRET` → cron/script
+routes stay behind the session gate (Vercel Cron would get 401s), so set both.
+OAuth connect flows (GA4, LinkedIn) are CSRF-protected with one-time `state`
+cookies — start them from the dashboard buttons, not from pasted URLs.
 
 ### Env vars (set in `.env.local` + Vercel; see `.env.example`)
 
 `DATABASE_URL` · `DASHBOARD_USER` · `DASHBOARD_PASSWORD` · `ALERT_EMAIL` ·
 `CRON_SECRET` · `STRIPE_SECRET_KEY` · `GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI` ·
-`LINKEDIN_CLIENT_ID/SECRET/REDIRECT_URI` · `ANTHROPIC_API_KEY` (optional —
+`LINKEDIN_CLIENT_ID/SECRET/REDIRECT_URI` · `LINKEDIN_ORG_ID` (set → posts
+publish as the company page, needs Community Management API product +
+reconnect; unset → personal profile) · `ANTHROPIC_API_KEY` (optional —
 AI drafting otherwise runs through scheduled Claude agents on the owner's
 subscription; deterministic voice templates need no key)
 
@@ -170,8 +189,10 @@ LinkedIn posts, proposals) queues for one-click approval; internal work
 (sync, classification, drafting, reporting) runs unattended.
 
 Next builds, in order:
-1. **Authority/LinkedIn engine v2** (P2) — 3 weekly post types
-   (spotlight/dispatch/paper), Claude-agent drafting in voice, scheduled publish
+1. ~~**Authority/LinkedIn engine v2** (P2)~~ — SHIPPED June 11: 3 weekly
+   pillars (ranking/news/education) on Mon/Wed/Fri, Claude-agent drafting in
+   voice on the owner's subscription, approval queue. Remaining for v3:
+   images on posts, then video; blog repurposing (`docs/CONTENT-STRATEGY.md`).
 2. **Money engine** — margin dashboard (MRR vs costs), overdue-installment
    chasing into the approval queue, Stripe subscription health
 3. **Gov intake on schedule** — fetch-rfpmart + sync-drive crons, due-date

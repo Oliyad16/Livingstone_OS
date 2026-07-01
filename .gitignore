@@ -1,7 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# dependencies (root AND nested, e.g. mcp/*/node_modules)
 /node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -16,6 +17,9 @@
 # next.js
 /.next/
 /out/
+
+# nested MCP server build output (compiled from src, rebuilt on deploy)
+mcp/*/dist/
 
 # production
 /build

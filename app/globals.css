@@ -51,6 +51,11 @@
   --color-gray-500: #8b8475; /* muted ink */
   --color-gray-400: #6b6457; /* secondary text */
   --color-gray-300: #3f3a31; /* strong text */
+  /* gray-100/200 are used for body text (e.g. editable fields). On Tailwind's
+     default scale these are near-white and vanish on our light surfaces, so they
+     must remap to dark ink like gray-300. */
+  --color-gray-200: #2c2820; /* strongest body ink */
+  --color-gray-100: #211e18;
   --color-white: #ffffff; /* stays true white so bg-white works */
   --color-black: #1c1a15;
 
@@ -88,6 +93,56 @@
   --shadow-card: 0 1px 2px rgba(40, 33, 16, 0.04),
     0 8px 24px -12px rgba(40, 33, 16, 0.12);
   --shadow-soft: 0 1px 2px rgba(40, 33, 16, 0.05);
+
+  /* ──────────────────────────────────────────────────────────────────────
+     shadcn/ui SEMANTIC TOKEN BRIDGE
+     ----------------------------------------------------------------------
+     shadcn components are written against semantic tokens (--primary,
+     --background, --card, --muted, …) rather than Tailwind scale steps.
+     We map those tokens to the SAME Livingstone gold/paper values used by
+     the rest of the app, so any component vendored into app/components/ui/
+     inherits the brand automatically — without touching the existing 13
+     pages, which keep using the remapped gray/blue scale above.
+
+     These expose Tailwind v4 utilities like bg-background, text-foreground,
+     bg-primary, border-border, ring-ring, etc. via the @theme color-* names.
+     ------------------------------------------------------------------------ */
+  --color-background: #f7f4ee;       /* warm paper */
+  --color-foreground: #2a2620;       /* near-black ink */
+
+  --color-card: #ffffff;
+  --color-card-foreground: #2a2620;
+
+  --color-popover: #ffffff;
+  --color-popover-foreground: #2a2620;
+
+  --color-primary: #9a7723;          /* Livingstone gold */
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #f4ead1;        /* soft gold chip */
+  --color-secondary-foreground: #6b4f1d;
+
+  --color-muted: #f1ece1;            /* faint warm surface */
+  --color-muted-foreground: #6b6457; /* secondary text */
+
+  --color-accent: #f4ead1;
+  --color-accent-foreground: #6b4f1d;
+
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: #e7e1d6;           /* soft warm border */
+  --color-input: #e7e1d6;
+  --color-ring: #9a7723;             /* gold focus ring */
+
+  /* Chart palette aligned with app/components/charts/theme.ts */
+  --color-chart-1: #9a7723;          /* gold */
+  --color-chart-2: #2f4bc4;          /* berry */
+  --color-chart-3: #059669;          /* green */
+  --color-chart-4: #b45309;          /* amber */
+  --color-chart-5: #dc2626;          /* red */
+
+  --radius: 0.75rem;
 }
 
 :root {
@@ -138,11 +193,13 @@ h3 {
   box-shadow: var(--shadow-card);
 }
 
-/* Inputs/selects/textareas: light fields with a gold focus ring. */
+/* Inputs/selects/textareas: light fields with a gold focus ring. Text must be
+   dark ink (this was white on the old dark theme, which made typed text and
+   field values invisible on the light surfaces). */
 input,
 select,
 textarea {
-  color: var(--color-white);
+  color: #2a2620;
 }
 input::placeholder,
 textarea::placeholder {

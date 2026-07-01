@@ -179,7 +179,7 @@ export default function Overview() {
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-white">Good morning, Olyad.</h2>
+          <h2 className="text-3xl font-bold text-white">Good morning, Oliyad.</h2>
           <div className="gold-divider my-3" />
           <p className="text-gray-500 text-sm">Here&apos;s where the business stands right now.</p>
         </div>

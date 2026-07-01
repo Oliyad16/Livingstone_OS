@@ -1,21 +1,28 @@
 'use client'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useWorkspace, type Workspace } from './WorkspaceContext'
 
 const TABS: { key: Workspace; label: string; hint: string }[] = [
   { key: 'private', label: 'Private', hint: 'SMB · GEO · Web' },
   { key: 'government', label: 'Government', hint: 'Capture · RFPs' },
   { key: 'client', label: 'Client', hint: 'All clients · GA4' },
+  { key: 'media', label: 'Media', hint: 'LinkedIn · Content · Analytics' },
 ]
 
 export default function TopBar() {
   const { workspace, setWorkspace } = useWorkspace()
   const router = useRouter()
+  const pathname = usePathname()
+
+  // The login screen renders standalone — no app chrome that would reveal the
+  // product to anyone who hasn't signed in yet.
+  if (pathname === '/login') return null
 
   function switchTo(key: Workspace) {
     setWorkspace(key)
-    // Land on the right home for the mode (Client cockpit opens on the list).
-    router.push(key === 'client' ? '/clients' : '/')
+    // Land on the right home for the mode (Client cockpit opens on the list,
+    // Media opens on its overview hub).
+    router.push(key === 'client' ? '/clients' : key === 'media' ? '/media' : '/')
   }
 
   async function logout() {

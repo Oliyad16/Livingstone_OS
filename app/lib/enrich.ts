@@ -18,17 +18,29 @@ export interface BudgetEstimate {
   rationale: string       // one line: where the number came from
 }
 
+// What a bidder must do to submit — surfaced in the deal-room "Submission
+// Requirements" block so clicking a contract shows everything needed to bid.
+export interface Submission {
+  deadline?: string        // free-text date + time + timezone, e.g. "2026-06-26 2:00 PM ET"
+  method?: string          // how to submit (portal / email / physical address)
+  requiredDocs?: string[]  // checklist of documents/forms a bidder must include
+  evaluation?: string      // how proposals are scored
+  eligibility?: string     // set-aside / MBE / registration prerequisites
+}
+
 export interface Enrichment {
   summary: string
   keyDates: KeyDates
   keyPeople: KeyPerson[]
   budget: BudgetEstimate
+  submission: Submission
   fit: string             // one line: how well it fits Livingstone (GEO/web/software)
 }
 
 const EMPTY: Enrichment = {
   summary: '', keyDates: {}, keyPeople: [],
   budget: { amount: 0, low: 0, high: 0, basis: 'unknown', rationale: '' },
+  submission: {},
   fit: '',
 }
 
@@ -43,11 +55,18 @@ From the provided solicitation text + known fields, produce:
     If a dollar value/budget IS stated, basis="disclosed", amount=that figure (low/high = same or stated range), rationale cites where.
     If NOT stated, basis="estimated": infer a realistic range from the scope, contract term, and comparable US state/federal awards for this kind of work; amount = midpoint; rationale names the comparable basis (e.g. "typical mid-size gov WordPress rebuild + 1yr hosting"). Be realistic, not optimistic.
     If there is genuinely nothing to estimate from, basis="unknown", all zeros.
+- "submission": exactly what a bidder must do to respond, read from the text:
+    {"deadline": "<date + time + timezone as written, e.g. 2026-07-17 2:00 PM ET>",
+     "method": "<how to submit — portal name + URL, email address, or physical address>",
+     "requiredDocs": ["<each document/form/section a response MUST include, e.g. Technical Proposal, Price Schedule, SF-33, Past Performance, signed reps & certs>"],
+     "evaluation": "<one line on how proposals are scored — LPTA, best value, weighted factors>",
+     "eligibility": "<set-aside / certification / registration prerequisites to be eligible, e.g. SAM.gov active, Total Small Business set-aside, CBE>"}.
+    Omit any key not stated in the text. requiredDocs = [] if none listed. Do NOT invent forms or a deadline that isn't in the document.
 - "fit": one sentence on how well this fits a GEO/web-dev/software agency.
 
-Never invent a person, email, date, or a DISCLOSED dollar figure that is not in the text. Estimated budgets are explicitly allowed and must be marked basis="estimated".
+Never invent a person, email, date, document, or a DISCLOSED dollar figure that is not in the text. Estimated budgets are explicitly allowed and must be marked basis="estimated".
 
-Return exactly: {"summary":"","keyDates":{},"keyPeople":[],"budget":{"amount":0,"low":0,"high":0,"basis":"unknown","rationale":""},"fit":""}`
+Return exactly: {"summary":"","keyDates":{},"keyPeople":[],"budget":{"amount":0,"low":0,"high":0,"basis":"unknown","rationale":""},"submission":{},"fit":""}`
 
 export async function enrichFromText(text: string, context = ''): Promise<Enrichment> {
   const key = process.env.ANTHROPIC_API_KEY
@@ -91,8 +110,23 @@ function normalize(j: Partial<Enrichment>): Enrichment {
       amount: num(b.amount), low: num(b.low), high: num(b.high),
       basis, rationale: typeof b.rationale === 'string' ? b.rationale.trim() : '',
     },
+    submission: cleanSubmission(j.submission || {}),
     fit: typeof j.fit === 'string' ? j.fit.trim() : '',
   }
+}
+
+function cleanSubmission(s: Partial<Submission>): Submission {
+  const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+  const out: Submission = {}
+  if (str(s.deadline)) out.deadline = str(s.deadline)
+  if (str(s.method)) out.method = str(s.method)
+  if (str(s.evaluation)) out.evaluation = str(s.evaluation)
+  if (str(s.eligibility)) out.eligibility = str(s.eligibility)
+  if (Array.isArray(s.requiredDocs)) {
+    const docs = s.requiredDocs.map(d => str(d)).filter(Boolean)
+    if (docs.length) out.requiredDocs = docs
+  }
+  return out
 }
 
 function stripFences(s: string): string {

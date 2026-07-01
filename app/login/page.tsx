@@ -36,13 +36,10 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-[70vh] px-4">
       <form onSubmit={submit} className="w-full max-w-sm rounded-3xl border border-gray-800 bg-gray-900 p-8 text-center">
-        <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white ring-1 ring-gray-800 shadow-[0_8px_24px_-10px_rgba(154,119,35,0.55)] overflow-hidden">
-          <Image src="/logo.png" alt="Living Stone Solutions" width={64} height={64} className="object-contain p-1" priority />
+        <span className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white ring-1 ring-gray-800 shadow-[0_8px_24px_-10px_rgba(154,119,35,0.55)] overflow-hidden">
+          <Image src="/logo.png" alt="" width={64} height={64} className="object-contain p-1" priority />
         </span>
-        <p className="text-[10px] text-gold uppercase tracking-[0.22em] font-semibold mb-1">Living Stone Solutions</p>
-        <h1 className="text-2xl font-bold text-white mb-1">Command Center</h1>
-        <div className="gold-divider mx-auto my-3" />
-        <p className="text-sm text-gray-500 mb-6">Sign in to continue.</p>
+        <div className="gold-divider mx-auto mb-6" />
 
         <input
           type="text"

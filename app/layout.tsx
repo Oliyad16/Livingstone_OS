@@ -19,9 +19,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Livingstone Command Center",
-  description:
-    "The command center for the Living Stone Solutions business — leads, clients, financials, capture, and authority.",
+  title: "Dashboard",
+  description: "Private workspace. Sign in to continue.",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

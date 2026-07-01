@@ -199,6 +199,24 @@ export async function initSchema() {
   await sql`CREATE INDEX IF NOT EXISTS opp_documents_opp_idx ON opp_documents (opp_id)`
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS opp_documents_file_idx ON opp_documents (opp_id, drive_file_id)`
 
+  // Stored RFP / solicitation files for a deal room. Unlike opp_documents (a
+  // CACHED index of Google Drive files), these are the actual uploaded/downloaded
+  // RFP packages we dissect when prepping a bid — the bytes live here (base64) so
+  // the deal room can serve them directly. Deleting the opportunity deletes these
+  // (handled in DELETE /api/opportunities), so an RFP never outlives its contract.
+  await sql`
+    CREATE TABLE IF NOT EXISTS rfp_documents (
+      id          TEXT PRIMARY KEY,
+      opp_id      TEXT NOT NULL,
+      filename    TEXT NOT NULL,
+      mime_type   TEXT DEFAULT 'application/octet-stream',
+      size_bytes  BIGINT,
+      content_b64 TEXT NOT NULL,
+      uploaded_at TIMESTAMPTZ DEFAULT now()
+    )
+  `
+  await sql`CREATE INDEX IF NOT EXISTS rfp_documents_opp_idx ON rfp_documents (opp_id)`
+
   // Payment-plan columns on clients. Deals range from simple retainers to
   // hybrid setup-fee + monthly, to milestone projects. Fixed terms live here;
   // the variable schedule lives in client_installments below.
@@ -267,6 +285,25 @@ export async function initSchema() {
 
   // Track LinkedIn post id on posts so we don't double-publish.
   await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS linkedin_id TEXT`
+
+  // Content pillar of a post (see docs/CONTENT-STRATEGY.md):
+  // 'ranking' (industry visibility rankings) | 'news' (AI news → GEO analysis)
+  // | 'education' (GEO lessons / case studies).
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS post_type TEXT DEFAULT 'news'`
+
+  // Per-post LinkedIn analytics. ugc_urn is the share URN (urn:li:ugcPost:… /
+  // urn:li:share:…) needed to query per-share statistics; the metric columns
+  // cache the last sync so the Media analytics page renders without a live API
+  // call. stats_synced_at NULL = never pulled (UI shows "—", never a fake 0).
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS ugc_urn TEXT`
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS impressions INTEGER`
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS unique_impressions INTEGER`
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS clicks INTEGER`
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS likes INTEGER`
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS comments INTEGER`
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS shares INTEGER`
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS engagement_rate REAL`
+  await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS stats_synced_at TIMESTAMPTZ`
 
   // Workspace separation columns. Run AFTER all CREATE TABLEs so this works on a
   // fresh database (the tables must exist before we alter them).

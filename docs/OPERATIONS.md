@@ -13,10 +13,14 @@ How to run the command center day to day.
    - **Queue for Gmail** → adds to the outbox, then run `npm run send-outbox` locally to actually send (auto-logs the touchpoint), **or**
    - **Copy** / **Open in email** to send manually, then **Mark contacted**.
 
-**Post to LinkedIn (GEO authority)**
-1. A draft is auto-generated each morning (Vercel cron → `/api/posts/daily`). Open **Authority**.
-2. Edit the draft → **Approve**.
+**Post to LinkedIn (GEO authority) — Mon/Wed/Fri**
+1. The `linkedin-authority-drafts` Claude agent drafts the day's post at 8am
+   (Mon ranking / Wed news / Fri education — see `docs/CONTENT-STRATEGY.md`).
+   Fallback: Vercel cron → `/api/posts/daily` (17:00 UTC) if the agent didn't run.
+2. Open **Authority** → edit the draft → **Approve**.
 3. **Publish to LinkedIn** (if connected) or **Copy** and post manually.
+   The header badge shows whether publishing targets the **company page**
+   (`LINKEDIN_ORG_ID` set + reconnected) or the personal profile.
 
 ---
 

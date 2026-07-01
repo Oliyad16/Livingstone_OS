@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/posts/daily",
-      "schedule": "0 13 * * *"
+      "schedule": "0 17 * * 1,3,5"
     },
     {
       "path": "/api/leads/followups/prepare",

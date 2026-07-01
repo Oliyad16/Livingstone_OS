@@ -9,18 +9,27 @@
     "lint": "eslint",
     "send-outbox": "node scripts/send-outbox.mjs",
     "fetch-rfpmart": "node scripts/fetch-rfpmart.mjs",
+    "fetch-rfpmart-digest": "node scripts/fetch-rfpmart-digest.mjs",
+    "fetch-sam": "node scripts/fetch-sam.mjs",
+    "seed-forecasts": "node scripts/seed-forecasts.mjs",
     "sync-drive": "node scripts/sync-drive.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
     "@neondatabase/serverless": "^1.1.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "google-auth-library": "^10.6.2",
+    "lucide-react": "^1.21.0",
     "next": "16.2.6",
     "pg": "^8.21.0",
+    "radix-ui": "^1.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "recharts": "^3.8.1",
     "stripe": "^22.2.0",
-    "recharts": "^3.8.1"
+    "tailwind-merge": "^3.6.0",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

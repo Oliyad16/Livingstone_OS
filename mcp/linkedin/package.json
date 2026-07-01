@@ -1,0 +1,26 @@
+{
+  "name": "livingstone-linkedin-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server wrapping the Livingstone dashboard's LinkedIn company-page publishing (shares the same Neon DB + LINKEDIN_* env).",
+  "bin": {
+    "livingstone-linkedin-mcp": "dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "pg": "^8.11.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -11,7 +11,10 @@ export const POST = guard(async (req: NextRequest) => {
 
   try {
     const linkedinId = await publishPost(rows[0].body)
-    await sql`UPDATE posts SET status = 'posted', posted_at = now(), linkedin_id = ${linkedinId} WHERE id = ${id}`
+    // linkedinId is the share/UGC URN — store it in ugc_urn too so the analytics
+    // sync can pull per-post statistics for it later.
+    await sql`UPDATE posts SET status = 'posted', posted_at = now(),
+              linkedin_id = ${linkedinId}, ugc_urn = ${linkedinId} WHERE id = ${id}`
     return NextResponse.json({ ok: true, linkedinId })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

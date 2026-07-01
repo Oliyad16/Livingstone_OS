@@ -205,7 +205,7 @@ export default function Analytics() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ propertyId: propId, propertyName: prop?.name, days: range.days, today: range.today, save }),
     })
-    const json = await res.json()
+    const json = await res.json().catch(() => ({}))
     if (!res.ok) { setError(json.error || 'Report failed.'); setLoading(false); return }
     setReport(json); setLoading(false); if (save) setSaved(true)
   }

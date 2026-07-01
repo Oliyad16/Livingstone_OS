@@ -8,36 +8,63 @@ import { SESSION_COOKIE, isValidSession } from './app/lib/auth'
 //  - the daily-post cron route, which authenticates with CRON_SECRET instead
 //
 // If DASHBOARD_PASSWORD isn't configured, the gate is disabled (fail-open) so a
-// fresh/local install still works — set the password to actually lock it down.
+// fresh LOCAL install still works — but in production a missing password fails
+// CLOSED (503) instead of silently exposing the whole dashboard. Likewise the
+// cron-route exemptions only apply when CRON_SECRET is configured in production
+// (otherwise those routes would be public); without it they fall back to
+// requiring a session like everything else.
 
-const PUBLIC_PATHS = ['/login', '/api/login', '/api/logout']
+// The login page must be able to load its own logo before sign-in, so the
+// brand image is allowed through the gate (it's the only asset the public
+// login screen shows — the rest of the UI stays locked).
+const PUBLIC_PATHS = ['/login', '/api/login', '/api/logout', '/logo.png']
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const password = process.env.DASHBOARD_PASSWORD
+  const isProd = process.env.NODE_ENV === 'production'
 
-  // Not configured → don't lock anyone out of a fresh install.
-  if (!password) return NextResponse.next()
+  // Not configured → fail OPEN locally (fresh install convenience), fail
+  // CLOSED in production (a forgotten env var must never publish the dashboard).
+  if (!password) {
+    if (!isProd) return NextResponse.next()
+    return NextResponse.json(
+      { error: 'Dashboard not configured: set DASHBOARD_PASSWORD in the environment.' },
+      { status: 503 }
+    )
+  }
 
-  // The cron route guards itself with CRON_SECRET (checked in the handler).
-  if (pathname === '/api/posts/daily') return NextResponse.next()
+  // Cron/script routes self-guard with CRON_SECRET in their handlers. That
+  // self-guard is skipped when CRON_SECRET is unset, so in production the
+  // exemptions below only apply when CRON_SECRET is actually configured —
+  // otherwise these routes stay behind the session gate (fail closed).
+  const cronExemptionsActive = !!process.env.CRON_SECRET || !isProd
 
-  // Follow-up auto-draft cron: self-guards with CRON_SECRET in-handler. It only
-  // writes 'draft' rows (the approval gate) — nothing sends without approval.
-  if (pathname === '/api/leads/followups/prepare') return NextResponse.next()
+  if (cronExemptionsActive) {
+    // The cron route guards itself with CRON_SECRET (checked in the handler).
+    if (pathname === '/api/posts/daily') return NextResponse.next()
 
-  // Intake routes are hit by the local fetch script (no session); they guard
-  // themselves with CRON_SECRET in-handler, same as the cron above.
-  if (pathname.startsWith('/api/intake/')) return NextResponse.next()
+    // Follow-up auto-draft cron: self-guards with CRON_SECRET in-handler. It only
+    // writes 'draft' rows (the approval gate) — nothing sends without approval.
+    if (pathname === '/api/leads/followups/prepare') return NextResponse.next()
 
-  // The Drive-sync script posts the cached document list to
-  // /api/opportunities/<id>/documents with no session; it self-guards with
-  // CRON_SECRET. (The GET-by-id deal-room route stays behind the session gate.)
-  if (/^\/api\/opportunities\/[^/]+\/documents$/.test(pathname)) return NextResponse.next()
+    // Intake routes are hit by the local fetch script (no session); they guard
+    // themselves with CRON_SECRET in-handler, same as the cron above.
+    if (pathname.startsWith('/api/intake/')) return NextResponse.next()
 
-  // The enrich route self-guards (accepts a valid session cookie OR a CRON_SECRET
-  // bearer) so both the browser button and the local sync-drive --enrich can call it.
-  if (/^\/api\/opportunities\/[^/]+\/enrich$/.test(pathname)) return NextResponse.next()
+    // The Drive-sync script posts the cached document list to
+    // /api/opportunities/<id>/documents with no session; it self-guards with
+    // CRON_SECRET. (The GET-by-id deal-room route stays behind the session gate.)
+    if (/^\/api\/opportunities\/[^/]+\/documents$/.test(pathname)) return NextResponse.next()
+
+    // The enrich route self-guards (accepts a valid session cookie OR a CRON_SECRET
+    // bearer) so both the browser button and the local sync-drive --enrich can call it.
+    if (/^\/api\/opportunities\/[^/]+\/enrich$/.test(pathname)) return NextResponse.next()
+
+    // Schema migration: self-guards (session cookie OR CRON_SECRET bearer) so the
+    // post-deploy `curl -H "Authorization: Bearer $CRON_SECRET"` runbook step works.
+    if (pathname === '/api/init') return NextResponse.next()
+  }
 
   if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
     return NextResponse.next()

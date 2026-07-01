@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useEffect, useState } from 'react'
 
-export type Workspace = 'private' | 'government' | 'client'
+export type Workspace = 'private' | 'government' | 'client' | 'media'
 
 interface Ctx {
   workspace: Workspace
@@ -16,7 +16,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   // Restore persisted choice on mount.
   useEffect(() => {
     const saved = localStorage.getItem('workspace')
-    if (saved === 'private' || saved === 'government' || saved === 'client') setWorkspaceState(saved)
+    if (saved === 'private' || saved === 'government' || saved === 'client' || saved === 'media') setWorkspaceState(saved)
   }, [])
 
   function setWorkspace(w: Workspace) {

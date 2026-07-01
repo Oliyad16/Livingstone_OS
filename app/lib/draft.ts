@@ -1,9 +1,9 @@
 // Deterministic follow-up draft generator.
-// Mirrors Olyad's voice (references/voice.md): warm, opens with personal
+// Mirrors Oliyad's voice (references/voice.md): warm, opens with personal
 // reference, short one-idea paragraphs, single soft CTA, signs off full name +
 // company, no em dashes, no filler.
 
-const CALENDAR_LINK = 'https://calendar.app.google/mQwXjZ9K2znRbmTy5'
+const CALENDAR_LINK = process.env.CALENDAR_LINK || 'https://calendar.app.google/mQwXjZ9K2znRbmTy5'
 const SIGNATURE = 'Best,\nOliyad Deyasa\nLivingStone Solution'
 
 type Touchpoint = { type: string; notes: string; date: string }

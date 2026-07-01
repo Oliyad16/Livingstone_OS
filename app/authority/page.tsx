@@ -4,22 +4,37 @@ import { useWorkspace } from '../components/WorkspaceContext'
 
 interface Post {
   id: string; topic: string; body: string; status: string; source: string
+  postType: string | null
   scheduledFor: string | null; createdAt: string; postedAt: string | null
 }
 
 const FILTERS = ['draft', 'approved', 'posted'] as const
 
+// Content pillars (docs/CONTENT-STRATEGY.md). Mirrored from lib/postwriter —
+// not imported, so the Anthropic SDK stays out of the client bundle.
+const TYPES = [
+  { value: 'ranking', label: 'Industry Ranking' },
+  { value: 'news', label: 'AI News Analysis' },
+  { value: 'education', label: 'GEO Education' },
+] as const
+const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES.map(t => [t.value, t.label]))
+
 export default function Authority() {
   const [posts, setPosts] = useState<Post[]>([])
   const [topic, setTopic] = useState('')
+  const [postType, setPostType] = useState<string>('news')
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [generating, setGenerating] = useState(false)
   const [filter, setFilter] = useState<string>('draft')
   const [editing, setEditing] = useState<Record<string, string>>({})
   const [copiedId, setCopiedId] = useState('')
-  const [li, setLi] = useState<{ connected: boolean; name: string | null }>({ connected: false, name: null })
+  const [li, setLi] = useState<{ connected: boolean; name: string | null; postingAs?: string }>({ connected: false, name: null })
   const [publishing, setPublishing] = useState('')
+  const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
   const { workspace } = useWorkspace()
+
+  // The nav labels this "Content" in the Media workspace, "Authority" elsewhere.
+  const pageTitle = workspace === 'media' ? 'Content' : 'Authority'
 
   async function load() {
     const res = await fetch(`/api/posts?workspace=${workspace}`)
@@ -31,6 +46,12 @@ export default function Authority() {
     fetch('/api/linkedin/status').then(r => r.json()).then(setLi).catch(() => {})
   }, [workspace])
 
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [toast])
+
   async function publish(id: string) {
     setPublishing(id)
     const res = await fetch('/api/posts/publish', {
@@ -39,8 +60,8 @@ export default function Authority() {
     })
     const j = await res.json()
     setPublishing('')
-    if (!res.ok) alert(`Publish failed: ${j.error}`)
-    else load()
+    if (!res.ok) setToast({ kind: 'err', msg: `Publish failed: ${j.error || 'unknown error'}` })
+    else { setToast({ kind: 'ok', msg: 'Published to LinkedIn.' }); load() }
   }
 
   async function generate(t?: string) {
@@ -49,7 +70,7 @@ export default function Authority() {
     setGenerating(true)
     await fetch('/api/posts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic: useTopic, workspace }),
+      body: JSON.stringify({ topic: useTopic, type: postType, workspace }),
     })
     setTopic(''); setGenerating(false); setFilter('draft'); load()
   }
@@ -82,15 +103,35 @@ export default function Authority() {
   }
   const shown = posts.filter(p => p.status === filter)
 
+  // Posting calendar: every scheduled, not-yet-posted slot, soonest first.
+  // 'planned' slots are reserved by the monthly prep agent and filled into
+  // full drafts by the weekly research agents.
+  const upcoming = posts
+    .filter(p => p.scheduledFor && p.status !== 'posted')
+    .sort((a, b) => (a.scheduledFor! < b.scheduledFor! ? -1 : 1))
+    .slice(0, 15)
+
   return (
     <div>
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 rounded-xl border px-4 py-3 text-sm shadow-soft ${
+          toast.kind === 'ok' ? 'bg-green-950/80 border-green-800 text-green-300' : 'bg-amber-950/80 border-amber-800 text-amber-200'
+        }`}>
+          {toast.msg}
+        </div>
+      )}
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Authority</h2>
+          <h2 className="text-2xl font-bold">{pageTitle}</h2>
           <p className="text-gray-400 text-sm">Build GEO authority on LinkedIn. Draft in your voice, approve, post.</p>
         </div>
         {li.connected ? (
-          <span className="text-xs text-green-400 bg-green-950/40 border border-green-900 px-3 py-1.5 rounded-lg">LinkedIn connected{li.name ? ` · ${li.name}` : ''}</span>
+          <span className="text-xs text-green-400 bg-green-950/40 border border-green-900 px-3 py-1.5 rounded-lg">
+            LinkedIn connected{li.name ? ` · ${li.name}` : ''}
+            {li.postingAs === 'company'
+              ? ' · posting as company page'
+              : <span className="text-amber-400"> · posting as personal profile</span>}
+          </span>
         ) : (
           <a href="/api/linkedin/auth" className="text-xs bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg">Connect LinkedIn</a>
         )}
@@ -98,7 +139,14 @@ export default function Authority() {
 
       {/* Generator */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-        <div className="flex gap-2 mb-3">
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+          <select
+            value={postType}
+            onChange={e => setPostType(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-700"
+          >
+            {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
           <input
             value={topic}
             onChange={e => setTopic(e.target.value)}
@@ -118,6 +166,32 @@ export default function Authority() {
           ))}
         </div>
       </div>
+
+      {/* Posting calendar (prepared-ahead slots) */}
+      {upcoming.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
+          <h3 className="text-sm font-semibold text-gray-200 mb-3">Posting calendar</h3>
+          <div className="space-y-1.5">
+            {upcoming.map(p => (
+              <div key={p.id} className="flex items-center gap-3 text-sm">
+                <span className="text-gray-400 w-28 shrink-0">
+                  {new Date(p.scheduledFor!).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                </span>
+                {p.postType && TYPE_LABEL[p.postType] && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-gray-300 shrink-0">{TYPE_LABEL[p.postType]}</span>
+                )}
+                <span className="text-gray-300 truncate">{p.topic}</span>
+                <span className={`ml-auto text-xs capitalize shrink-0 ${
+                  p.status === 'planned' ? 'text-gray-500'
+                  : p.status === 'approved' ? 'text-green-400'
+                  : 'text-blue-400'}`}>
+                  {p.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-5">
@@ -140,6 +214,9 @@ export default function Authority() {
               <div key={p.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs text-gray-500">
+                    {p.postType && TYPE_LABEL[p.postType] && (
+                      <span className="mr-2 px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-gray-300">{TYPE_LABEL[p.postType]}</span>
+                    )}
                     {p.topic} · <span className="capitalize">{p.source}</span>
                     {p.source === 'template' && <span className="ml-1 text-amber-500">(no API key — template)</span>}
                   </p>

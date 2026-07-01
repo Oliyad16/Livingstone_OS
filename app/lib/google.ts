@@ -10,6 +10,9 @@ export const GA4_SCOPES = [
   'email',
 ]
 
+// One-time OAuth state cookie (CSRF protection for the GA4 connect flow).
+export const GA4_STATE_COOKIE = 'ga4_oauth_state'
+
 export function oauthClient(): OAuth2Client {
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } = process.env
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {

@@ -27,6 +27,10 @@ function Icon({ name }: { name: string }) {
       return <svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 9h8M8 13h5" /></svg>
     case '/analytics':
       return <svg {...common}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>
+    case '/media':
+      return <svg {...common}><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="5" rx="1.5" /><rect x="13" y="11" width="8" height="10" rx="1.5" /><rect x="3" y="14" width="8" height="7" rx="1.5" /></svg>
+    case '/media/analytics':
+      return <svg {...common}><path d="M3 11v6M8 8v9M13 4v13M18 9v8M22 20H2" /></svg>
     case '/authority':
       return <svg {...common}><path d="m12 3 2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" /></svg>
     case '/financials':
@@ -68,11 +72,26 @@ const CLIENT_NAV = [
   { href: '/financials', label: 'Client Financials' },
 ]
 
+// Media hub: all LinkedIn / content work — draft & publish, the posting
+// calendar, and LinkedIn post-performance analytics.
+const MEDIA_NAV = [
+  { href: '/media', label: 'Overview' },
+  { href: '/authority', label: 'Content' },
+  { href: '/media/analytics', label: 'LinkedIn Analytics' },
+]
+
 export default function Sidebar() {
   const path = usePathname()
   const { workspace } = useWorkspace()
+
+  // Hidden on the login screen so the nav doesn't expose the product before sign-in.
+  if (path === '/login') return null
+
   const nav =
-    workspace === 'government' ? GOVERNMENT_NAV : workspace === 'client' ? CLIENT_NAV : PRIVATE_NAV
+    workspace === 'government' ? GOVERNMENT_NAV
+    : workspace === 'client' ? CLIENT_NAV
+    : workspace === 'media' ? MEDIA_NAV
+    : PRIVATE_NAV
 
   return (
     <aside className="w-60 bg-gray-900 border-r border-gray-800 flex flex-col py-7 px-4 shrink-0">

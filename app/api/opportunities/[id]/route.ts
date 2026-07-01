@@ -30,5 +30,12 @@ export const GET = guard(async (_req: Request, ctx: { params: Promise<{ id: stri
     [id]
   )) as Record<string, unknown>[]
 
-  return NextResponse.json({ ...coerceNums(rows, ['value'])[0], documents: docs })
+  // Stored RFP files (metadata only — bytes are served on demand via the rfp route).
+  const rfps = (await sql.query(
+    `SELECT id, filename, mime_type AS "mimeType", size_bytes AS "sizeBytes", uploaded_at AS "uploadedAt"
+     FROM rfp_documents WHERE opp_id = $1 ORDER BY uploaded_at DESC`,
+    [id]
+  )) as Record<string, unknown>[]
+
+  return NextResponse.json({ ...coerceNums(rows, ['value'])[0], documents: docs, rfpDocuments: rfps })
 })

@@ -72,6 +72,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       budgetLow: e.budget.low,
       budgetHigh: e.budget.high,
       budgetRationale: e.budget.rationale,
+      // Merge submission requirements: keep any field the user has already filled
+      // in by hand, fill the rest from what the agent read out of the RFP.
+      submission: { ...((o.extra?.submission as object) || {}), ...e.submission },
       fit: e.fit || o.extra?.fit || '',
     }
     // Only overwrite the value when the agent produced a real number; keep a
